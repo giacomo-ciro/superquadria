@@ -25,3 +25,6 @@ dist/
 
 # Logs / runtime artifacts
 *.log
+runs/
+mazes/
+frames/
