@@ -52,25 +52,20 @@ class Move:
         if isinstance(actions_raw, str):  # e.g. "up,up,left"
             actions_raw = [t for t in actions_raw.replace(",", " ").split() if t]
         actions = [Direction.parse(token) for token in actions_raw][:MAX_TRAJECTORY]
-        return cls(actions=actions, reasoning=str(payload.get("reasoning", "")), raw=payload)
+        return cls(actions=actions, raw=payload)
 
 
 #: JSON Schema pinned via `claude --json-schema` for the navigation agent.
 MOVE_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "reasoning": {
-            "type": "string",
-            "description": "One or two sentences: where you believe the key is and why this trajectory makes progress.",
-        },
         "actions": {
             "type": "array",
-            "description": "Ordered directional steps to execute. Execution halts at the first step into a wall.",
             "items": {"type": "string", "enum": ["up", "down", "left", "right"]},
             "minItems": 1,
             "maxItems": MAX_TRAJECTORY,
         },
     },
-    "required": ["reasoning", "actions"],
+    "required": ["actions"],
     "additionalProperties": False,
 }

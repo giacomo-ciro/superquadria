@@ -1,0 +1,55 @@
+{
+  "width": 20,
+  "height": 20,
+  "terrain": [
+    "####################",
+    "#..................#",
+    "#..................#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..................#",
+    "#..................#",
+    "#..................#",
+    "#..................#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..#####....#####..#",
+    "#..................#",
+    "#..................#",
+    "####################"
+  ],
+  "entities": [
+    {
+      "kind": "player",
+      "row": 6,
+      "col": 8
+    },
+    {
+      "kind": "key",
+      "row": 15,
+      "col": 2
+    }
+  ],
+  "meta": {
+    "generator": "agent-single-shot",
+    "theme": "Pillarfield Plaza",
+    "description": "A single open interior plaza marked by four substantial pillar islands. Broad perimeter routes and central cross-passages provide long sightlines while the\n    pillars create recognizable landmarks and prevent the space from feeling featureless.",
+    "structural_rules": [
+      "Use a continuous outer wall enclosing the playable area.",
+      "Place four solid 5x5 pillar islands in the upper-left, upper-right, lower-left, and lower-right quadrants.",
+      "Keep the central area and the perimeter corridors open so every floor cell remains connected.",
+      "Leave at least two-cell-wide walking routes around each pillar island.",
+      "Use the pillar islands as the primary landmarks, with no sealed rooms or dead-end pockets."
+    ],
+    "seed": null,
+    "source": "agent",
+    "open_ratio": 0.56,
+    "shortest_path": 15,
+    "generation_s": 27.0
+  }
+}

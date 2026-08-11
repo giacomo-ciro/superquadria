@@ -25,6 +25,6 @@ dist/
 
 # Logs / runtime artifacts
 *.log
-runs/
-mazes/
+episodes/
+# mazes/
 frames/

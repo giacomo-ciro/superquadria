@@ -1,0 +1,55 @@
+{
+  "width": 20,
+  "height": 20,
+  "terrain": [
+    "####################",
+    "#..................#",
+    "#.###...###...###..#",
+    "#.###...###...###..#",
+    "#.###...###...###..#",
+    "#..................#",
+    "#.....#.....#......#",
+    "#..................#",
+    "#.##..##...###...###",
+    "#.###...###...###..#",
+    "#.###...###...###..#",
+    "#..................#",
+    "#.....#.....#......#",
+    "#..................#",
+    "#.###...###...###..#",
+    "#.###...###...###..#",
+    "#.###...#..###...###",
+    "#..................#",
+    "#..................#",
+    "####################"
+  ],
+  "entities": [
+    {
+      "kind": "player",
+      "row": 1,
+      "col": 2
+    },
+    {
+      "kind": "key",
+      "row": 12,
+      "col": 4
+    }
+  ],
+  "meta": {
+    "generator": "agent-single-shot",
+    "theme": "Pillar Field",
+    "description": "A single open interior stretches across the grid, broken only by evenly spaced stone pillar clusters. Broad cross-routes preserve long sightlines,\n  while the pillars provide landmarks and prevent the space from feeling featureless.",
+    "structural_rules": [
+      "The outermost row and column form a continuous one-cell-thick boundary wall.",
+      "The\n  interior is one connected walkable floor network with no enclosed pockets.",
+      "Nine 3x3 pillar blocks are arranged in a regular three-by-three landmark grid.",
+      "Four isolated single-cell\n  pillars sit between the main pillar blocks.",
+      "Open lanes of at least two cells run horizontally and vertically between pillar groups."
+    ],
+    "seed": null,
+    "source": "agent",
+    "open_ratio": 0.5975,
+    "shortest_path": 15,
+    "generation_s": 33.4
+  }
+}

@@ -1,0 +1,23 @@
+# Configuration for `python main.py {generate,play,run}`.
+# Only the command and `--offline` are CLI flags; everything else lives here.
+# Any key you omit surfaces as an OmegaConf error where it is read.
+
+defaults:
+  - agent: codex    # which CLI to drive — see configs/agent/{claude,codex}.yaml
+  - _self_
+
+# Agent-agnostic knobs; the binary/model/effort come from the group above.
+agent:
+  timeout: 600.0       # seconds per agent call
+  retries: 2           # retries per failed agent call
+
+generation:
+  side_length: 50
+  brief: null              # optional text command instructing the maze generator
+
+episode:
+  policy: agent            # agent (the CLI chosen above) | frontier | manual (arrow keys)
+  max_steps: 2000           # one call can make more steps
+  max_calls: 80             # for manual, no limit
+  view_size: 7               # side length (cells) of the player's local view grid
+  step_delay: 0.0            # seconds per executed step

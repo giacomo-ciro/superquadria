@@ -1,0 +1,54 @@
+{
+  "width": 20,
+  "height": 20,
+  "terrain": [
+    "####################",
+    "#...#.....#...#....#",
+    "#...#.....#...#....#",
+    "#...#####.#.###....#",
+    "#.........#........#",
+    "###.#######.####.###",
+    "#...#.....#....#...#",
+    "#...#.....#....#...#",
+    "#...#####.####.#...#",
+    "#.................##",
+    "#...#####.####.#...#",
+    "#...#.....#....#...#",
+    "#...#.....#....#...#",
+    "###.#######.####.###",
+    "#.........#........#",
+    "#...#####.#.###....#",
+    "#...#.....#...#....#",
+    "#...#.....#...#....#",
+    "#...#.....#...#....#",
+    "####################"
+  ],
+  "entities": [
+    {
+      "kind": "player",
+      "row": 11,
+      "col": 6
+    },
+    {
+      "kind": "key",
+      "row": 1,
+      "col": 17
+    }
+  ],
+  "meta": {
+    "generator": "agent-single-shot",
+    "theme": "Lantern Cloister",
+    "description": "A symmetrical ruined cloister built around a central east-west avenue, with four chamber districts and narrow axial passages. Repeated room shapes create landmarks, while\n    staggered doorways and short sightline breaks prevent the maze from becoming a featureless hall.",
+    "structural_rules": [
+      "Use four repeated chamber districts arranged around a central horizontal avenue.",
+      "Separate chambers with thick wall bands and connect them through single-cell doorways.",
+      "Maintain narrow corridors along the major north-south and east-west axes.",
+      "Break long views with alternating wall segments and offset openings.",
+      "Keep the outermost ring entirely walled."
+    ],
+    "source": "agent",
+    "open_ratio": 0.565,
+    "shortest_path": 21,
+    "generation_s": 49.7
+  }
+}

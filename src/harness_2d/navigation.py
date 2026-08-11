@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from collections import deque
 
-from .agents.base import Agent
-from .agents.claude_cli import ClaudeCallError
+from .agents.base import Agent, AgentError
 from .memory import FogMemory
 from .moves import MAX_TRAJECTORY, MOVE_SCHEMA, Move
+from .pipeline_log import PipelineLogger
 from .policies import FrontierPolicy, Policy
 from .state import State
 
@@ -24,25 +24,33 @@ SYSTEM_PROMPT = (
 
 
 class ClaudeNavigator(Policy):
-    """Navigation policy backed by an `Agent` (i.e. the `claude` CLI)."""
+    """Navigation policy backed by an `Agent` (whichever CLI the config selected)."""
 
-    name = "claude"
+    name = "agent"
 
     def __init__(self, agent: Agent, *, max_steps: int = MAX_TRAJECTORY,
                  step_budget: int | None = None, fallback: Policy | None = None,
-                 log=print):
+                 log: PipelineLogger | None = None):
         self.agent = agent
+        # Saved into every episode as `policy`, so it has to say which CLI actually
+        # played — a codex run recorded as "claude" is a corrupt comparison.
+        self.name = getattr(agent, "binary", type(self).name)
         self.max_steps = max_steps
         self.step_budget = step_budget
         # If a call fails outright, keep the episode alive with the offline
         # policy rather than throwing away the whole run.
         self.fallback = fallback if fallback is not None else FrontierPolicy()
-        self.log = log
+        self.log = log if log is not None else PipelineLogger("nav")
         self.recent_positions: deque[tuple[int, int]] = deque(maxlen=6)
         self.failures = 0
+        self.cancelled = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+        self.agent.cancel()
 
     def act(self, state: State) -> Move:
-        memory = self._ensure_memory(state)
+        memory = self.memory
         self.recent_positions.append(state.player_position.as_tuple())
         prompt = self.build_prompt(state, memory)
         try:
@@ -50,10 +58,13 @@ class ClaudeNavigator(Policy):
             move = Move.from_structured_output(payload)
             if not move.actions:
                 raise ValueError("agent returned an empty trajectory")
-            return Move(move.actions[: self.max_steps], move.reasoning, move.raw)
-        except (ClaudeCallError, ValueError, KeyError, TypeError) as exc:
+            return Move(move.actions[: self.max_steps], raw=move.raw)
+        except (AgentError, ValueError, KeyError, TypeError) as exc:
+            if self.cancelled:
+                raise  # the user quit mid-call; not an agent failure, and the
+                       # engine has already stopped caring about the answer
             self.failures += 1
-            self.log(f"[nav] agent call failed ({exc}); falling back for this turn")
+            self.log.info(state.step, f"agent call failed ({exc}); falling back for this turn")
             self.fallback.memory = memory  # share the map, don't re-explore
             return self.fallback.act(state)
 

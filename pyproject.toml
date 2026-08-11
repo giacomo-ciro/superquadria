@@ -1,11 +1,21 @@
 [project]
 name = "general-intuition"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agent harness that generates game environments and then plays them"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pygame>=2.5",
-    "pytest>=8.0"
+    "pytest>=8.0",
+    "hydra-core>=1.3"
 
 ]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# Two sibling harnesses under src/: `harness_2d` (the maze harness) and
+# `harness_3d` (empty for now). `find` picks up their subpackages too.
+[tool.setuptools.packages.find]
+where = ["src"]

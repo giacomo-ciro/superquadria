@@ -237,13 +237,14 @@ def random_open_cell(terrain: list[bytearray], rng: random.Random,
 # --------------------------------------------------------- procedural fallback
 
 
-def procedural_maze(width: int, height: int, rng: random.Random,
+def procedural_maze(side_length: int, rng: random.Random,
                     *, braid: float = 0.12) -> list[bytearray]:
     """Randomised depth-first ("recursive backtracker") maze.
 
-    Used by `--offline` and by the tests, and as the per-band fallback when a
-    generation call fails, so a run never dies on one bad API response.
+    Used by `--offline` and when an agent generation call fails, so a run never
+    dies on one bad API response.
     """
+    width = height = side_length
     terrain = [bytearray(int(Tile.WALL) for _ in range(width)) for _ in range(height)]
     terrain[1][1] = Tile.EMPTY
     stack = [(1, 1)]

@@ -1,0 +1,55 @@
+{
+  "width": 20,
+  "height": 20,
+  "terrain": [
+    "####################",
+    "#...##...##...##...#",
+    "#..................#",
+    "#...##...##...##...#",
+    "##.####.####.####.##",
+    "##.####.####.####.##",
+    "#...##...##...##...#",
+    "#..................#",
+    "#...##...##...##...#",
+    "##.####.####.####.##",
+    "##.####.####.####.##",
+    "#...##...##...##...#",
+    "#..................#",
+    "#...##...##...##...#",
+    "##.####.####.####.##",
+    "##.####.####.####.##",
+    "#...##...##...##...#",
+    "#..................#",
+    "#...##...##...##...#",
+    "####################"
+  ],
+  "entities": [
+    {
+      "kind": "player",
+      "row": 17,
+      "col": 2
+    },
+    {
+      "kind": "key",
+      "row": 17,
+      "col": 18
+    }
+  ],
+  "meta": {
+    "generator": "agent-single-shot",
+    "theme": "Crossroads Observatory",
+    "description": "A compact lattice of square chambers linked by deliberate cross-shaped passages. Repeating rooms provide landmarks, while central sightlines and alternating corridors make\n    exploration readable without creating vast empty halls.",
+    "structural_rules": [
+      "Arrange sixteen 3x3 chambers in a 4x4 grid.",
+      "Separate neighboring chambers with two-cell-wide wall bands.",
+      "Connect horizontal chamber neighbors through their middle row.",
+      "Connect vertical chamber neighbors through their central column.",
+      "Keep a continuous outer wall around the entire maze.",
+      "Maintain approximately 48% walkable floor."
+    ],
+    "source": "agent",
+    "open_ratio": 0.48,
+    "shortest_path": 16,
+    "generation_s": 84.2
+  }
+}

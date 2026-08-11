@@ -1,0 +1,4 @@
+name: claude
+binary: claude
+model: haiku    # haiku sonnet opus fable
+effort: low     # low, medium, high, xhigh, max
