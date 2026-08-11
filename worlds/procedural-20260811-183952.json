@@ -1,0 +1,1211 @@
+{
+  "bounds": 60.0,
+  "player": {
+    "position": [
+      -19.5,
+      -4.5,
+      25.5
+    ],
+    "forward": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "radius": 0.6
+  },
+  "key_id": 39,
+  "primitives": [
+    {
+      "id": 0,
+      "kind": "obstacle",
+      "assembly": "arch-0",
+      "position": [
+        -12.814,
+        6.617,
+        -13.685
+      ],
+      "rotation": [
+        -90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        6.482
+      ],
+      "exponents": [
+        0.2,
+        0.3
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 1,
+      "kind": "obstacle",
+      "assembly": "arch-0",
+      "position": [
+        -0.958,
+        6.617,
+        -13.685
+      ],
+      "rotation": [
+        -90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        6.482
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.878,
+        0.824,
+        0.937
+      ]
+    },
+    {
+      "id": 2,
+      "kind": "obstacle",
+      "assembly": "arch-0",
+      "position": [
+        -6.886,
+        13.099,
+        -13.685
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        7.057
+      ],
+      "exponents": [
+        0.25,
+        0.25
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 3,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -6.912,
+        -13.273,
+        -6.195
+      ],
+      "rotation": [
+        45.24,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        3.035
+      ],
+      "exponents": [
+        0.841,
+        1.289
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 4,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -9.059,
+        -16.439,
+        -3.055
+      ],
+      "rotation": [
+        45.24,
+        51.43,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        2.843
+      ],
+      "exponents": [
+        1.176,
+        0.564
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 5,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -13.884,
+        -17.22,
+        -2.28
+      ],
+      "rotation": [
+        45.24,
+        102.86,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        3.819
+      ],
+      "exponents": [
+        0.916,
+        1.01
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 6,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -17.753,
+        -15.03,
+        -4.453
+      ],
+      "rotation": [
+        45.24,
+        154.29,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        3.932
+      ],
+      "exponents": [
+        1.094,
+        0.407
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 7,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -17.753,
+        -11.516,
+        -7.937
+      ],
+      "rotation": [
+        45.24,
+        205.71,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        2.911
+      ],
+      "exponents": [
+        0.457,
+        1.245
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 8,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -13.884,
+        -9.325,
+        -10.11
+      ],
+      "rotation": [
+        45.24,
+        257.14,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        4.101
+      ],
+      "exponents": [
+        1.07,
+        0.471
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 9,
+      "kind": "obstacle",
+      "assembly": "ring-1",
+      "position": [
+        -9.059,
+        -10.107,
+        -9.334
+      ],
+      "rotation": [
+        45.24,
+        308.57,
+        0.0
+      ],
+      "scale": [
+        2.297,
+        2.297,
+        3.247
+      ],
+      "exponents": [
+        0.631,
+        0.812
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 10,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        10.296,
+        7.475,
+        6.989
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.974,
+        2.974,
+        2.974
+      ],
+      "exponents": [
+        1.248,
+        1.32
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 11,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        8.993,
+        6.59,
+        5.627
+      ],
+      "rotation": [
+        65.44,
+        154.13,
+        62.9
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        3.623
+      ],
+      "exponents": [
+        0.653,
+        0.739
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 12,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        11.547,
+        8.267,
+        8.452
+      ],
+      "rotation": [
+        101.63,
+        63.46,
+        99.33
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        3.929
+      ],
+      "exponents": [
+        0.7,
+        0.696
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 13,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        8.417,
+        6.637,
+        6.67
+      ],
+      "rotation": [
+        178.21,
+        157.84,
+        168.05
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        3.465
+      ],
+      "exponents": [
+        0.69,
+        0.965
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 14,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        11.706,
+        8.435,
+        8.182
+      ],
+      "rotation": [
+        19.99,
+        91.21,
+        94.75
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        3.416
+      ],
+      "exponents": [
+        0.681,
+        0.714
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 15,
+      "kind": "obstacle",
+      "assembly": "cluster-2",
+      "position": [
+        11.087,
+        6.046,
+        8.28
+      ],
+      "rotation": [
+        107.39,
+        161.76,
+        32.35
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        5.14
+      ],
+      "exponents": [
+        0.325,
+        0.559
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 16,
+      "kind": "obstacle",
+      "assembly": "columns-3",
+      "position": [
+        -13.879,
+        -12.805,
+        9.813
+      ],
+      "rotation": [
+        -90.0,
+        35.53,
+        0.0
+      ],
+      "scale": [
+        1.707,
+        1.707,
+        4.828
+      ],
+      "exponents": [
+        0.34,
+        1.0
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 17,
+      "kind": "obstacle",
+      "assembly": "columns-3",
+      "position": [
+        -17.781,
+        -12.808,
+        0.868
+      ],
+      "rotation": [
+        -90.0,
+        85.65,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        8.669
+      ],
+      "exponents": [
+        0.294,
+        1.0
+      ],
+      "color": [
+        0.878,
+        0.824,
+        0.937
+      ]
+    },
+    {
+      "id": 18,
+      "kind": "obstacle",
+      "assembly": "columns-3",
+      "position": [
+        -14.863,
+        -8.3,
+        10.31
+      ],
+      "rotation": [
+        -90.0,
+        8.75,
+        0.0
+      ],
+      "scale": [
+        1.734,
+        1.734,
+        6.543
+      ],
+      "exponents": [
+        0.18,
+        1.0
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 19,
+      "kind": "obstacle",
+      "assembly": "columns-3",
+      "position": [
+        -15.842,
+        -9.62,
+        4.655
+      ],
+      "rotation": [
+        -90.0,
+        12.19,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        5.056
+      ],
+      "exponents": [
+        0.324,
+        0.2
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 20,
+      "kind": "obstacle",
+      "assembly": "arch-4",
+      "position": [
+        -0.845,
+        -7.013,
+        -13.789
+      ],
+      "rotation": [
+        -90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        7.357
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 21,
+      "kind": "obstacle",
+      "assembly": "arch-4",
+      "position": [
+        14.883,
+        -7.013,
+        -13.789
+      ],
+      "rotation": [
+        -90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        7.357
+      ],
+      "exponents": [
+        0.2,
+        0.3
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 22,
+      "kind": "obstacle",
+      "assembly": "arch-4",
+      "position": [
+        7.019,
+        0.343,
+        -13.789
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        9.329
+      ],
+      "exponents": [
+        0.25,
+        0.25
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 23,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -7.184,
+        10.106,
+        10.443
+      ],
+      "rotation": [
+        36.66,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        2.537
+      ],
+      "exponents": [
+        1.226,
+        1.146
+      ],
+      "color": [
+        0.878,
+        0.824,
+        0.937
+      ]
+    },
+    {
+      "id": 24,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -10.09,
+        6.504,
+        15.283
+      ],
+      "rotation": [
+        36.66,
+        51.43,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        1.872
+      ],
+      "exponents": [
+        0.685,
+        1.326
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 25,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -16.619,
+        5.614,
+        16.479
+      ],
+      "rotation": [
+        36.66,
+        102.86,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        3.118
+      ],
+      "exponents": [
+        0.822,
+        0.609
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 26,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -21.855,
+        8.107,
+        13.129
+      ],
+      "rotation": [
+        36.66,
+        154.29,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        2.567
+      ],
+      "exponents": [
+        1.353,
+        0.515
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 27,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -21.855,
+        12.105,
+        7.757
+      ],
+      "rotation": [
+        36.66,
+        205.71,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        2.39
+      ],
+      "exponents": [
+        0.591,
+        1.194
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 28,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -16.619,
+        14.598,
+        4.407
+      ],
+      "rotation": [
+        36.66,
+        257.14,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        2.641
+      ],
+      "exponents": [
+        1.167,
+        1.381
+      ],
+      "color": [
+        0.878,
+        0.824,
+        0.937
+      ]
+    },
+    {
+      "id": 29,
+      "kind": "obstacle",
+      "assembly": "ring-5",
+      "position": [
+        -10.09,
+        13.708,
+        5.602
+      ],
+      "rotation": [
+        36.66,
+        308.57,
+        0.0
+      ],
+      "scale": [
+        1.864,
+        1.864,
+        2.797
+      ],
+      "exponents": [
+        1.332,
+        1.122
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 30,
+      "kind": "obstacle",
+      "assembly": "cluster-6",
+      "position": [
+        8.268,
+        -13.438,
+        14.711
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        2.638,
+        2.638,
+        2.638
+      ],
+      "exponents": [
+        0.607,
+        1.196
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 31,
+      "kind": "obstacle",
+      "assembly": "cluster-6",
+      "position": [
+        7.672,
+        -11.835,
+        15.408
+      ],
+      "rotation": [
+        143.94,
+        106.58,
+        137.88
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        5.362
+      ],
+      "exponents": [
+        0.705,
+        0.735
+      ],
+      "color": [
+        0.878,
+        0.824,
+        0.937
+      ]
+    },
+    {
+      "id": 32,
+      "kind": "obstacle",
+      "assembly": "cluster-6",
+      "position": [
+        6.556,
+        -12.904,
+        14.269
+      ],
+      "rotation": [
+        121.27,
+        127.84,
+        168.69
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        5.639
+      ],
+      "exponents": [
+        0.212,
+        0.249
+      ],
+      "color": [
+        0.184,
+        0.137,
+        0.22
+      ]
+    },
+    {
+      "id": 33,
+      "kind": "obstacle",
+      "assembly": "cluster-6",
+      "position": [
+        8.717,
+        -14.986,
+        13.81
+      ],
+      "rotation": [
+        6.75,
+        19.0,
+        108.15
+      ],
+      "scale": [
+        2.04,
+        2.04,
+        5.397
+      ],
+      "exponents": [
+        0.241,
+        0.383
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 34,
+      "kind": "obstacle",
+      "assembly": "columns-7",
+      "position": [
+        6.901,
+        14.261,
+        -19.943
+      ],
+      "rotation": [
+        -90.0,
+        89.61,
+        0.0
+      ],
+      "scale": [
+        2.001,
+        2.001,
+        7.764
+      ],
+      "exponents": [
+        0.322,
+        1.0
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 35,
+      "kind": "obstacle",
+      "assembly": "columns-7",
+      "position": [
+        8.429,
+        11.856,
+        -13.436
+      ],
+      "rotation": [
+        -90.0,
+        61.96,
+        0.0
+      ],
+      "scale": [
+        2.109,
+        2.109,
+        7.423
+      ],
+      "exponents": [
+        0.341,
+        1.0
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 36,
+      "kind": "obstacle",
+      "assembly": "columns-7",
+      "position": [
+        7.286,
+        15.681,
+        -18.032
+      ],
+      "rotation": [
+        -90.0,
+        38.51,
+        0.0
+      ],
+      "scale": [
+        2.15,
+        2.15,
+        6.189
+      ],
+      "exponents": [
+        0.341,
+        1.0
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 37,
+      "kind": "obstacle",
+      "assembly": "columns-7",
+      "position": [
+        13.226,
+        11.683,
+        -20.426
+      ],
+      "rotation": [
+        -90.0,
+        6.69,
+        0.0
+      ],
+      "scale": [
+        1.93,
+        1.93,
+        8.175
+      ],
+      "exponents": [
+        0.201,
+        1.0
+      ],
+      "color": [
+        0.639,
+        0.51,
+        0.769
+      ]
+    },
+    {
+      "id": 38,
+      "kind": "obstacle",
+      "assembly": "columns-7",
+      "position": [
+        11.414,
+        14.269,
+        -11.353
+      ],
+      "rotation": [
+        -90.0,
+        32.73,
+        0.0
+      ],
+      "scale": [
+        1.7,
+        1.7,
+        8.417
+      ],
+      "exponents": [
+        0.196,
+        1.0
+      ],
+      "color": [
+        0.42,
+        0.294,
+        0.541
+      ]
+    },
+    {
+      "id": 39,
+      "kind": "key",
+      "assembly": "key",
+      "position": [
+        -1.5,
+        -1.5,
+        -16.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "exponents": [
+        0.6,
+        0.6
+      ],
+      "color": [
+        1.0,
+        0.84,
+        0.28
+      ]
+    }
+  ],
+  "meta": {
+    "theme": "Violet Kilns",
+    "description": "Bounded random assemblies: arches, rings, branching clusters and offset columns, placed one per octant.",
+    "composition_rules": [
+      "one assembly per occupied octant",
+      "parts of an assembly overlap deliberately",
+      "assemblies are separated by open flight corridors"
+    ],
+    "palette": [
+      "#6b4b8a",
+      "#a382c4",
+      "#2f2338",
+      "#e0d2ef"
+    ],
+    "source": "procedural",
+    "primitives": 39,
+    "assemblies": [
+      "arch-0",
+      "arch-4",
+      "cluster-2",
+      "cluster-6",
+      "columns-3",
+      "columns-7",
+      "ring-1",
+      "ring-5"
+    ],
+    "validation_spacing": 3.0,
+    "free_component": 7797,
+    "witness_hops": 14,
+    "witness_path_length": 67.7,
+    "generation_s": 2.6
+  }
+}

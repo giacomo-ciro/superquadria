@@ -26,5 +26,7 @@ dist/
 # Logs / runtime artifacts
 *.log
 episodes/
+episodes_3d/
 # mazes/
+# worlds/
 frames/

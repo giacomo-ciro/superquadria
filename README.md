@@ -5,8 +5,9 @@ are the same abstraction — `Agent.run(prompt, schema) -> structured_output`, a
 around an interactive coding CLI (`claude` or `codex`) driven inside tmux — checked by
 code (position/terrain lookups in `Scene`), never by looking at pixels.
 
-Task spec: [`TASK.md`](./TASK.md) · design: [`PLAN.md`](./PLAN.md) · conventions and
-architecture notes for agents: [`AGENTS.md`](./AGENTS.md).
+Task spec: [`TASK.md`](./TASK.md) · design: [`docs/2D_PLAN.md`](./docs/2D_PLAN.md) and
+[`docs/3D_PLAN.md`](./docs/3D_PLAN.md) · conventions and architecture notes for
+agents: [`AGENTS.md`](./AGENTS.md).
 
 ## Run it
 
@@ -75,6 +76,49 @@ collided). `python main.py replay` picks one of those and replays it.
                      ▲          │                                           │
                      └──────────┴── execute step by step, halt on collision ┘
 ```
+
+## The 3D harness
+
+`harness_3d` is the sibling that does the same thing in three dimensions: an agent
+designs a world made **entirely of superquadrics**, and an agent flies through it
+looking for a key. Design: [`docs/3D_PLAN.md`](./docs/3D_PLAN.md).
+
+```bash
+python -m harness_3d generate --offline   # procedural world, zero agent calls
+python -m harness_3d run --offline        # procedural world + manual flight (smoke test)
+python -m harness_3d run                  # agent generates, agent flies
+python -m harness_3d play                 # pick a saved world under worlds/
+python -m harness_3d replay               # re-watch a saved episode
+```
+
+Settings live in [`configs/3d.yaml`](./configs/3d.yaml) — same loader, same `agent`
+group, so `defaults: - agent: codex` picks the CLI here too. Worlds are written to
+`worlds/`, episodes to `episodes_3d/`, and the two stay separate artifacts exactly
+as mazes and episodes do.
+
+One generation call returns a theme, a palette and a list of superquadric
+parameters. The harness re-validates every one against hard numeric bounds, drops
+whatever is malformed, and replaces the whole world with a procedural fallback if
+too little survives. It then voxelises free space and proves — with the same
+clearance test movement uses — that a route exists, before placing the spawn and a
+reachable, initially unseen key. `superquadrics.py` meshes the primitives in pure
+Python and owns collision, success and sensor visibility;
+[Ursina](https://www.ursinaengine.org/) renders those meshes and reads input, but is
+never asked a question about the world.
+
+Movement is continuous rather than gridded: the agent returns a batch of absolute
+target positions, the camera turns to face each one, and the harness flies the
+straight segment in small increments, halting at the first that collides. Manual
+play is `WASD` + `Space`/`Shift` + mouse look through the same collision and success
+predicates.
+
+**Where it departs from the 2D harness:** the 3D navigation agent is not a vision
+policy, and `TASK.md`'s vision-policy context does not hold for it. It never sees
+pixels. It receives the validated *parameters* of the superquadrics its sensor
+(range + camera frustum + sampled line of sight) has detected, plus its own pose.
+Once any part of a shape is detected it is handed the entire shape, so it knows more
+than a screenshot of the same view would show. Meshes, unobserved primitives and the
+generation-time reachability graph are never exposed to it.
 
 ## Observations
 - Codex > Claude both for generation and navigation:
