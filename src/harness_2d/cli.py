@@ -1,7 +1,7 @@
 """Command line entrypoints: `generate`, `play`, `run`.
 
-All settings besides the command and `--offline` live in `configs/config.yaml`
-(`config.CONFIG_PATH`) — see `config.py`.
+All settings besides the command and `--offline` live in `configs/2d.yaml`, read
+fresh on every run — see `harness_common.config`.
 """
 
 from __future__ import annotations
@@ -18,10 +18,11 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from .agents.claude_tmux import ClaudeTmuxAgent
-from .agents.codex_tmux import CodexTmuxAgent
-from .agents.tmux_agent import TmuxAgent
-from .config import CONFIG_PATH, load_config
+from harness_common.agents.claude_tmux import ClaudeTmuxAgent
+from harness_common.agents.codex_tmux import CodexTmuxAgent
+from harness_common.agents.tmux_agent import TmuxAgent
+from harness_common.config import load_config
+
 from .engine import Episode, Replay, load_episode, save_episode
 from .generation import MazeGenerator
 from .maze_utils import bfs_path
@@ -32,27 +33,28 @@ from .scene import Scene
 
 #: Mazes and episodes are separate artifacts: a maze is generated once and can
 #: be played many times, so every episode only records the path it ran on.
-MAZES_DIR = Path("mazes")
-EPISODES_DIR = Path("episodes")
+CONFIG_PATH = Path("configs/2d.yaml")
+WORLDS_DIR = Path("worlds_2d")
+EPISODES_DIR = Path("episodes_2d")
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="maze-harness",
+        prog="python -m harness_2d",
         description="Agent harness that generates a 2D maze and navigates it. "
                      f"All other settings live in {CONFIG_PATH}.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    gen = sub.add_parser("generate", help="generate a maze and save it under mazes/")
+    gen = sub.add_parser("generate", help="generate a maze and save it under worlds_2d/")
     gen.add_argument("--offline", action="store_true", help="procedural maze, zero agent calls")
 
-    sub.add_parser("play", help="pick a saved maze under mazes/ and play a fresh episode on it")
+    sub.add_parser("play", help="pick a saved maze under worlds_2d/ and play a fresh episode on it")
 
-    run = sub.add_parser("run", help="generate a maze under mazes/, then immediately play it")
+    run = sub.add_parser("run", help="generate a maze under worlds_2d/, then immediately play it")
     run.add_argument("--offline", action="store_true", help="procedural maze, zero agent calls")
 
-    sub.add_parser("replay", help="pick a saved episode under episodes/ and replay it in the pygame window")
+    sub.add_parser("replay", help="pick a saved episode under episodes_2d/ and replay it in the pygame window")
 
     return parser
 
@@ -61,7 +63,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 #: Selected by `agent.name`, which comes from the `defaults: - agent:` group in
-#: configs/config.yaml — so one line there swaps every agent call in the harness.
+#: configs/2d.yaml — so one line there swaps every agent call in the harness.
 AGENTS = {"claude": ClaudeTmuxAgent, "codex": CodexTmuxAgent}
 
 
@@ -213,7 +215,7 @@ def _slugify(text: str) -> str:
 def _maze_path(scene: Scene, stamp: str) -> Path:
     """Where to write a freshly generated maze.
 
-    Named after the theme the generator gave it, so `mazes/` reads as a list of
+    Named after the theme the generator gave it, so `worlds_2d/` reads as a list of
     designs rather than of timestamps. Terrain the agent did not actually draw —
     an offline run, or a failed agent call falling back to `procedural_maze` —
     has no real name to take, so it stays on the timestamp.
@@ -223,22 +225,22 @@ def _maze_path(scene: Scene, stamp: str) -> Path:
     # Two runs can land on the same theme, and a saved episode points at its
     # maze by path — reusing a name would silently repoint old episodes at
     # different terrain, so disambiguate instead of overwriting.
-    path = MAZES_DIR / f"{stem}.json"
+    path = WORLDS_DIR / f"{stem}.json"
     nth = 2
     while path.exists():
-        path = MAZES_DIR / f"{stem}-{nth}.json"
+        path = WORLDS_DIR / f"{stem}-{nth}.json"
         nth += 1
     return path
 
 
 def _pick_maze() -> tuple[Scene, Path] | None:
-    """Let the user pick a previously generated maze from mazes/. Maze files are
+    """Let the user pick a previously generated maze from worlds_2d/. Maze files are
     written before any episode touches them, so the player is at its spawn."""
-    mazes = _list_json(MAZES_DIR)
+    mazes = _list_json(WORLDS_DIR)
     if not mazes:
-        print(f"no mazes found under {MAZES_DIR}/ — use `generate` (or `run`) first")
+        print(f"no mazes found under {WORLDS_DIR}/ — use `generate` (or `run`) first")
         return None
-    print(f"[play] {len(mazes)} maze(s) available under {MAZES_DIR}/:")
+    print(f"[play] {len(mazes)} maze(s) available under {WORLDS_DIR}/:")
     for i, path in enumerate(mazes, 1):
         print(f"  {i:>2}. {path.name}")
     path = _prompt_choice(mazes, "play")

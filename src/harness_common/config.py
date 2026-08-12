@@ -1,11 +1,12 @@
 """YAML configuration loading, via Hydra/OmegaConf.
 
-The CLI (`cli.py`) takes only a command and `--offline`; every other knob —
-agent settings, maze side length, episode settings — lives in
-`configs/config.yaml` (see `CONFIG_PATH`), which is also the single source of
-defaults: nothing here re-declares them, so an omitted key surfaces as an
-OmegaConf error at the point it's read rather than silently falling back to
-something else.
+Each harness's CLI takes only a command and `--offline`; every other knob —
+agent settings, world size, episode settings — lives in that harness's config
+under `configs/` (`configs/2d.yaml`, `configs/3d.yaml`), which is also the
+single source of defaults: nothing here re-declares them, so an omitted key
+surfaces as an OmegaConf error at the point it's read rather than silently
+falling back to something else. Which file to read is the caller's business —
+see `CONFIG_PATH` in each `cli.py`.
 
 Which CLI the agents drive is a Hydra config group: `defaults: - agent: claude`
 composes `configs/agent/claude.yaml` (binary, model, effort) into `agent`, and
@@ -20,12 +21,8 @@ from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
 
-#: Resolved relative to the current working directory, same convention as the
-#: `mazes/` and `episodes/` output directories.
-CONFIG_PATH = Path("configs/config.yaml")
 
-
-def load_config(path: Path = CONFIG_PATH) -> DictConfig:
+def load_config(path: Path) -> DictConfig:
     if not path.exists():
         raise FileNotFoundError(f"{path} not found — see configs/ at the repo root for the expected shape")
     if GlobalHydra.instance().is_initialized():

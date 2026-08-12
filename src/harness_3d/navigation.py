@@ -11,8 +11,8 @@ is not allowed to have.
 
 from __future__ import annotations
 
-from harness_2d.agents.base import Agent, AgentError
-from harness_2d.pipeline_log import PipelineLogger
+from harness_common.agents.base import Agent, AgentError
+from harness_common.pipeline_log import PipelineLogger
 
 from .memory import SpatialMemory
 from .moves import MAX_WAYPOINTS, TRAJECTORY_SCHEMA, Trajectory

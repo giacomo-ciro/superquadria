@@ -13,9 +13,10 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from harness_common.pipeline_log import PipelineLogger
+
 from .memory import FogMemory
 from .moves import Direction, Move
-from .pipeline_log import PipelineLogger
 from .policies import Policy, PolicyQuit
 from .scene import VIEW_SIZE, Scene
 from .state import State
@@ -383,7 +384,7 @@ def save_episode(path: str | Path, maze: str | Path, result: EpisodeResult,
                  extra: dict | None = None) -> Path:
     """Persist the full trajectory so an episode can be replayed/audited.
 
-    Nothing about the maze is copied — it already lives under `mazes/`, terrain
+    Nothing about the maze is copied — it already lives under `worlds_2d/`, terrain
     and metadata alike, so the episode only records the path it was played on.
     """
     path = Path(path)

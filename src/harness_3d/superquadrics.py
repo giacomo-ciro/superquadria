@@ -214,6 +214,13 @@ def build_mesh(prim: Superquadric, resolution: int) -> MeshData:
         triangles.append((north, last[j], last[(j + 1) % sectors]))
 
     normals = _smooth_normals(vertices, triangles, prim.position.as_tuple())
+    # Wound above so the right-hand rule points out of the surface, which is what
+    # makes the normals outward — but Ursina's world is left-handed (y-up-left),
+    # so that same order rasterises clockwise and every front face is culled,
+    # leaving the shapes looking hollow. Reversing here, after the normals are
+    # taken, renders them solid without touching the normals. Collision is
+    # winding-agnostic, so it reads either order identically.
+    triangles = [(a, c, b) for a, b, c in triangles]
     color = (*prim.color, 1.0)
     return MeshData(vertices=vertices, triangles=triangles, normals=normals,
                     colors=[color] * len(vertices))

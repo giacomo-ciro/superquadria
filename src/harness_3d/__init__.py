@@ -1,9 +1,10 @@
 """An agent harness that generates a 3D superquadric world and then flies it.
 
-Sibling of `harness_2d`, whose `Agent` and tmux backends it reuses. Every piece
-of generated world geometry is a superquadric, stored as compact parameters
-rather than as source code or model files, and the navigation agent observes
-those parameters directly instead of pixels.
+Sibling of `harness_2d`; the `Agent` abstraction and tmux backends both harnesses
+run on live in `harness_common`. Every piece of generated world geometry is a
+superquadric, stored as compact parameters rather than as source code or model
+files, and the navigation agent observes those parameters directly instead of
+pixels.
 
 Layout:
   geometry / superquadrics      vectors, the primitive, meshing, collision, sensor

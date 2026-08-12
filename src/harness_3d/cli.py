@@ -1,7 +1,7 @@
 """Command line entrypoints: `generate`, `play`, `run`, `replay`.
 
 All settings besides the command and `--offline` live in `configs/3d.yaml`, read
-fresh on every run — the same convention as the 2D harness, and the same loader.
+fresh on every run — see `harness_common.config`.
 """
 
 from __future__ import annotations
@@ -18,10 +18,10 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from harness_2d.agents.claude_tmux import ClaudeTmuxAgent
-from harness_2d.agents.codex_tmux import CodexTmuxAgent
-from harness_2d.agents.tmux_agent import TmuxAgent
-from harness_2d.config import load_config
+from harness_common.agents.claude_tmux import ClaudeTmuxAgent
+from harness_common.agents.codex_tmux import CodexTmuxAgent
+from harness_common.agents.tmux_agent import TmuxAgent
+from harness_common.config import load_config
 
 from .engine import Budgets, Episode, Replay, load_episode, save_episode
 from .generation import WorldGenerator
@@ -33,12 +33,11 @@ from .superquadrics import Sensor
 #: Worlds and episodes are separate artifacts: a world is generated once and can
 #: be played many times, so every episode only records the path it ran on.
 CONFIG_PATH = Path("configs/3d.yaml")
-WORLDS_DIR = Path("worlds")
+WORLDS_DIR = Path("worlds_3d")
 EPISODES_DIR = Path("episodes_3d")
 
 #: Selected by `agent.name`, which comes from the `defaults: - agent:` group in
-#: configs/3d.yaml — reused wholesale from the 2D harness, which is what
-#: 3D_PLAN.md section 9 asks for until a shared package is justified.
+#: configs/3d.yaml — so one line there swaps every agent call in the harness.
 AGENTS = {"claude": ClaudeTmuxAgent, "codex": CodexTmuxAgent}
 
 
@@ -50,12 +49,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    gen = sub.add_parser("generate", help="generate a world and save it under worlds/")
+    gen = sub.add_parser("generate", help="generate a world and save it under worlds_3d/")
     gen.add_argument("--offline", action="store_true", help="procedural world, zero agent calls")
 
-    sub.add_parser("play", help="pick a saved world under worlds/ and fly a fresh episode on it")
+    sub.add_parser("play", help="pick a saved world under worlds_3d/ and fly a fresh episode on it")
 
-    run = sub.add_parser("run", help="generate a world under worlds/, then immediately fly it")
+    run = sub.add_parser("run", help="generate a world under worlds_3d/, then immediately fly it")
     run.add_argument("--offline", action="store_true",
                      help="procedural world plus manual play — zero agent calls")
 
@@ -75,7 +74,7 @@ def _make_agent(cfg: DictConfig, role: str) -> TmuxAgent:
         binary=cfg.binary,
         timeout=cfg.timeout,
         max_retries=cfg.retries,
-        # One session per role, so both can be watched at once — see the 2D README.
+        # One session per role, so both can be watched at once — see the README.
         session_name=f"general-intuition-3d-{role}",
         window_name=role,
         effort=cfg.effort,
@@ -95,7 +94,6 @@ def _generate(config: DictConfig, *, offline: bool) -> Scene:
         player_radius=world.player_radius,
         move_increment=config.episode.move_increment,
         collision_resolution=world.collision_resolution,
-        target_primitives=gen.target_primitives,
         min_primitives=gen.min_primitives,
         max_primitives=gen.max_primitives,
         exponent_range=tuple(gen.exponent_range),
@@ -204,7 +202,7 @@ def _slugify(text: str) -> str:
 def _world_path(scene: Scene, stamp: str) -> Path:
     """Where to write a freshly generated world.
 
-    Named after the theme the generator gave it, so `worlds/` reads as a list of
+    Named after the theme the generator gave it, so `worlds_3d/` reads as a list of
     designs. A world the agent did not actually design keeps the timestamp.
     """
     theme = scene.meta.get("theme") if scene.meta.get("source") == "agent" else None

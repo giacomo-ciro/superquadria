@@ -18,8 +18,7 @@ world:
   collision_resolution: 8   # the coarser mesh collision and line of sight are measured against
 
 generation:
-  brief: null               # optional text directing the generator; ignored by --offline
-  target_primitives: 48     # what the prompt asks for
+  brief: "A realistic home environment. Home furnitures (chairs, tables ...) and utensiles (fork, spoon, pan ...) are present in the scene to create a kitchen."               # optional text directing the generator; ignored by --offline
   min_primitives: 12        # fewer valid ones than this rejects the whole world
   max_primitives: 80        # enforced before anything is meshed
   exponent_range: [0.1, 4.0]

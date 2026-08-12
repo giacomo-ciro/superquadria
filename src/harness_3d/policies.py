@@ -78,6 +78,10 @@ class ManualPolicy(Policy):
         renderer = self.renderer
         if renderer.quit_requested:
             raise PolicyQuit()
+        # Third person is a camera, not a controller: the mouse orbits and the
+        # movement keys are ignored until the view comes back.
+        if renderer.third_person:
+            return None
 
         dx, dy = renderer.mouse_delta
         self.yaw += dx * self.sensitivity

@@ -14,7 +14,9 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
-from .agents.base import Agent, AgentError
+from harness_common.agents.base import Agent, AgentError
+from harness_common.pipeline_log import PipelineLogger
+
 from .entities import Entity, Tile
 from .maze_utils import (
     ensure_border_walls,
@@ -23,7 +25,6 @@ from .maze_utils import (
     procedural_maze,
     random_open_cell,
 )
-from .pipeline_log import PipelineLogger
 from .scene import VIEW_SIZE, Scene
 
 MAZE_SCHEMA: dict = {

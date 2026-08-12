@@ -20,7 +20,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from harness_2d.pipeline_log import PipelineLogger
+from harness_common.pipeline_log import PipelineLogger
 
 from .geometry import Vec3
 from .memory import SpatialMemory
@@ -403,7 +403,7 @@ def save_episode(path: str | Path, world: str | Path, result: EpisodeResult,
                  extra: dict | None = None) -> Path:
     """Persist the full trajectory so an episode can be replayed and audited.
 
-    Nothing about the world is copied — it already lives under `worlds/`,
+    Nothing about the world is copied — it already lives under `worlds_3d/`,
     primitives and metadata alike, so the episode records only the path it ran on.
     """
     path = Path(path)

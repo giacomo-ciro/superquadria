@@ -1,4 +1,4 @@
-"""`python -m harness_3d {generate,play,run,replay}`. See README.md."""
+"""`python -m harness_2d {generate,play,run,replay}`. See README.md."""
 
 import sys
 

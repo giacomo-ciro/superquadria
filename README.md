@@ -12,10 +12,10 @@ agents: [`AGENTS.md`](./AGENTS.md).
 ## Run it
 
 ```bash
-uv sync                                        # Python >=3.12
+uv sync                              # Python >=3.12
 
-python main.py run --offline                   # full loop, no API calls (smoke test)
-python main.py run                             # agent generates, agent plays
+python -m harness_2d run --offline   # full loop, no API calls (smoke test)
+python -m harness_2d run             # agent generates, agent plays
 ```
 
 The CLI only takes a command (`generate` / `play` / `run`) and `--offline`; everything
@@ -23,7 +23,7 @@ else — agent settings, maze size, episode options, `policy: agent|frontier` �
 lives in [`configs/`](./configs/), read fresh on every run. Edit it directly, e.g. set
 `episode.policy: frontier` for the zero-API-call baseline.
 
-**Choosing the agent.** [`configs/config.yaml`](./configs/config.yaml) picks one with a
+**Choosing the agent.** [`configs/2d.yaml`](./configs/2d.yaml) picks one with a
 Hydra config group:
 
 ```yaml
@@ -53,16 +53,17 @@ The window is pinned to 200x50 regardless of your terminal size, since the CLIs 
 JSON to the pane width — so a smaller terminal sees a clipped view rather than resizing it.
 
 In pieces (generation is the slow part, so generate once and play it many times while
-iterating on navigation): `python main.py generate` writes `mazes/<theme>.json`, named
-after the theme the generator gave it (`mazes/the-pillared-hall.json`); mazes the agent
-did not design — `--offline`, or a failed generation call — are `mazes/procedural-<timestamp>.json`.
-Then `python main.py play` lists what is in `mazes/` and runs a fresh episode on the one
-you pick (toggle `episode.policy: frontier` there for the zero-API-call baseline).
+iterating on navigation): `python -m harness_2d generate` writes `worlds_2d/<theme>.json`,
+named after the theme the generator gave it (`worlds_2d/the-pillared-hall.json`); mazes
+the agent did not design — `--offline`, or a failed generation call — are
+`worlds_2d/procedural-<timestamp>.json`. Then `python -m harness_2d play` lists what is in
+`worlds_2d/` and runs a fresh episode on the one you pick (toggle `episode.policy: frontier`
+there for the zero-API-call baseline).
 
 Mazes and episodes are separate artifacts. `generate` and `run` both save the maze to
-`mazes/`; every episode writes a single `episodes/episode-<timestamp>.json` holding the
+`worlds_2d/`; every episode writes a single `episodes_2d/episode-<timestamp>.json` holding the
 `maze` path it was played on plus the trajectory (every plan, what executed, where it
-collided). `python main.py replay` picks one of those and replays it.
+collided). `python -m harness_2d replay` picks one of those and replays it.
 
 ## How it fits together
 
@@ -87,13 +88,13 @@ looking for a key. Design: [`docs/3D_PLAN.md`](./docs/3D_PLAN.md).
 python -m harness_3d generate --offline   # procedural world, zero agent calls
 python -m harness_3d run --offline        # procedural world + manual flight (smoke test)
 python -m harness_3d run                  # agent generates, agent flies
-python -m harness_3d play                 # pick a saved world under worlds/
+python -m harness_3d play                 # pick a saved world under worlds_3d/
 python -m harness_3d replay               # re-watch a saved episode
 ```
 
 Settings live in [`configs/3d.yaml`](./configs/3d.yaml) — same loader, same `agent`
 group, so `defaults: - agent: codex` picks the CLI here too. Worlds are written to
-`worlds/`, episodes to `episodes_3d/`, and the two stay separate artifacts exactly
+`worlds_3d/`, episodes to `episodes_3d/`, and the two stay separate artifacts exactly
 as mazes and episodes do.
 
 One generation call returns a theme, a palette and a list of superquadric
@@ -110,7 +111,11 @@ Movement is continuous rather than gridded: the agent returns a batch of absolut
 target positions, the camera turns to face each one, and the harness flies the
 straight segment in small increments, halting at the first that collides. Manual
 play is `WASD` + `Space`/`Shift` + mouse look through the same collision and success
-predicates.
+predicates. The `view` button — or `V`, the only way out while the cursor is locked
+to mouse look — swaps first person for a third-person camera fixed in the world,
+which the agent flies through rather than drags around: left-drag rotates,
+right-drag pans, the wheel zooms, and manual flight is parked until the view comes
+back.
 
 **Where it departs from the 2D harness:** the 3D navigation agent is not a vision
 policy, and `TASK.md`'s vision-policy context does not hold for it. It never sees
@@ -121,9 +126,13 @@ than a screenshot of the same view would show. Meshes, unobserved primitives and
 generation-time reachability graph are never exposed to it.
 
 ## Observations
-- Codex > Claude both for generation and navigation:
-  - across all model sizes, codex is less verbose, more concise
-  - for generation, codex uses python to generate the maze and don't get it wrong
-  - when exploring, codex is more conservative and takes less action is the enviornment is not explored
-- Model size matters: haiku gets the maze generation wrong, gpt luna always consumes all 24 moves even if only few tiles are visible.
-- Terra is good at systemtaic exploration.
+- 2D Harness (tested Claude and Codex):
+  - Codex > Claude both for generation and navigation:
+    - across all model sizes, codex is less verbose, more concise
+    - for generation, codex uses python to generate the maze and don't get it wrong
+    - when exploring, codex is more conservative and takes less action is the enviornment is not explored
+  - Model size matters: haiku gets the maze generation wrong, gpt luna always consumes all 24 moves even if only few tiles are visible.
+  - Terra is good at systemtaic exploration.
+- 3D Harness (Codex only):
+  -  world generation works decently: Terra follows the brief and generates plausible world in superquadrics
+  - Terra explores systematicaly (closed circular loop at different levels to scan the whole cube, then straight to the key as soon it appears) 

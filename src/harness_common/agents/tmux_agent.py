@@ -32,6 +32,24 @@ from .base import Agent, AgentError
 SESSION_WIDTH = 200
 SESSION_HEIGHT = 50
 
+#: How long a frozen pane holding no extractable answer is given before the turn is
+#: called failed. "The pane stopped changing" cannot on its own mean "the answer is
+#: complete": a model that pauses mid-JSON leaves the pane static for seconds at a time,
+#: and capturing there yields a truncated object that fails the whole call. So the wait
+#: ends on a *parseable* answer instead — but a turn that really did finish without one
+#: has to be given up on well before the call timeout, or every such retry would cost
+#: minutes of waiting on a pane that will never change again.
+RESPONSE_SETTLE_GRACE = 60.0
+
+#: How long a parseable answer must sit on an unchanging pane before it is accepted.
+#: Without this the wait ends the moment *an* answer parses, which is not the same as
+#: the turn being over: a model that writes one complete object, pauses, then writes a
+#: corrected one would have the superseded draft taken as its answer. Extraction is
+#: last-wins within a capture, so all this has to buy is the confidence that nothing
+#: further is coming — and `_idle_confirmed` has already required a still pane for a
+#: second before we get here, so the real silence demanded is a second longer than this.
+ANSWER_CONFIRM = 0.0
+
 
 @dataclass
 class TmuxAgent(Agent):
@@ -198,6 +216,16 @@ class TmuxAgent(Agent):
                              capture_output=True, text=True, check=True)
         return res.stdout
 
+    def _capture_response(self) -> str:
+        """The whole pane, wrapped lines rejoined — what an answer is extracted from.
+
+        `-J` joins the CLI's terminal soft-wraps so JSON doesn't break at the pane
+        width; `-S -` takes the full history rather than the 40 lines `_capture` reads.
+        """
+        res = subprocess.run(["tmux", "capture-pane", "-p", "-J", "-t", self.target, "-S", "-"],
+                             capture_output=True, text=True, check=True)
+        return res.stdout
+
     def _is_busy(self) -> bool:
         return bool(self.busy_regex.search(self._capture()))
 
@@ -280,6 +308,61 @@ class TmuxAgent(Agent):
                     yield text[start:i + 1]
                     start = None
 
+    def _extract(self, pane: str, nonce: str, required: list) -> dict | None:
+        """This turn's answer, or None if `pane` does not hold a complete one yet.
+
+        None covers both "still being written" and "this turn produced no answer" —
+        indistinguishable from a single capture, which is why the caller polls this
+        rather than treating one None as failure.
+        """
+        # Keep only what the pane gained after this turn's prompt was echoed. Without
+        # this, a turn that produces no JSON of its own (a refusal, an error banner, a
+        # turn read as finished too early) falls through to the previous turn's answer
+        # still sitting on the visible pane and hands it back as this turn's — a stale
+        # move replayed silently, with no failure recorded anywhere. Anchor on the first
+        # occurrence, so a model that repeats the marker in its answer cannot truncate
+        # its own output.
+        anchor = pane.find(nonce)
+        if anchor < 0:
+            return None
+        turn_output = pane[anchor + len(nonce):]
+
+        # strict=False: the CLI word-wraps long string values to the pane width by
+        # printing real newlines (not a terminal soft-wrap tmux -J could rejoin), so
+        # a captured string field can contain literal control characters that strict
+        # JSON parsing would otherwise reject.
+        # Every candidate is checked against the schema's required keys, because not all
+        # of the JSON in a turn is its answer — a model that restates the schema or
+        # sketches an example emits objects that parse fine, and parsing alone would
+        # hand one of those back, which the caller then reads as a malformed response
+        # rather than the failed turn it is. Rejecting them here turns that into a retry.
+        def accept(text: str) -> dict | None:
+            try:
+                obj = json.loads(text, strict=False)
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(obj, dict) or any(key not in obj for key in required):
+                return None
+            return obj
+
+        # Prefer an explicit fenced block if the model produced one; try the latest
+        # first, in case an earlier one belongs to draft/example text. A block still
+        # being streamed has no closing fence yet, so it simply doesn't match — which
+        # is exactly the "not finished" answer the caller is polling for.
+        blocks = re.findall(r'```json\s*(.*?)\s*```', turn_output, re.DOTALL)
+        for block in reversed(blocks):
+            if (obj := accept(block)) is not None:
+                return obj
+
+        # Fallback: the model often just emits raw JSON with no fence. Scan for every
+        # balanced top-level object — the echoed prompt's own schema literal is one
+        # such object, so a naive "first match" would grab that instead — and try
+        # them from the end, since the actual answer comes after the echoed prompt.
+        for candidate in reversed(list(self._iter_balanced_objects(turn_output))):
+            if (obj := accept(candidate)) is not None:
+                return obj
+        return None
+
     def _invoke(self, prompt: str, schema: dict, *, system: str | None) -> dict:
         self._ensure_session()
         # Cancel any turn a previous failed attempt left running, so this submission
@@ -349,71 +432,55 @@ class TmuxAgent(Agent):
         if not submitted:
             raise AgentError("submission was not accepted (never went busy)")
 
-        # 4. Wait for the turn to complete (Replicating `fm_pane_is_busy` polling).
+        # 4. Wait for the turn to produce a complete answer.
+        #
+        # Not just for the pane to go idle: idle is "no busy marker and byte-identical
+        # across a one-second gap", and a model that pauses longer than that partway
+        # through writing its JSON satisfies it while its object is still half-written.
+        # Capturing there failed the call on a truncated object even though the turn
+        # went on to answer perfectly well. So the wait ends on an answer that actually
+        # parses and carries the schema's required keys, and a pane that is idle but
+        # not yet parseable is just a pane that isn't finished.
+        #
+        # Nor does it end the moment an answer first parses, which is not the same as
+        # the turn being over — a model that writes one object, pauses, then writes a
+        # corrected one would have the draft taken as its answer. So the pane must also
+        # have stopped changing: an answer is accepted once it has survived ANSWER_CONFIRM
+        # on a frozen pane, and extraction is last-wins, so a turn that kept writing is
+        # read at its final state. A turn that genuinely produces no answer would hold
+        # this loop until the call timeout, so a pane frozen for the much longer
+        # RESPONSE_SETTLE_GRACE with nothing extractable is taken as finished-and-failed
+        # and handed to the retry. Any further output resets both clocks.
+        required = schema.get("required", [])
         timeout_at = time.monotonic() + self.timeout
+        answer: dict | None = None
+        pane = ""
+        frozen_since = time.monotonic()
         while True:
             if self._cancelled:
                 raise AgentError("cancelled")
             if time.monotonic() > timeout_at:
                 raise AgentError(f"timed out after {self.timeout:.0f}s")
             if self._idle_confirmed():
-                break
+                latest = self._capture_response()
+                if latest != pane:
+                    pane, frozen_since = latest, time.monotonic()
+                frozen_for = time.monotonic() - frozen_since
+                candidate = self._extract(pane, nonce, required)
+                if candidate is not None:
+                    if frozen_for >= ANSWER_CONFIRM:
+                        answer = candidate
+                        break
+                elif frozen_for > RESPONSE_SETTLE_GRACE:
+                    break
             time.sleep(1.0)
 
-        # 5. Extract the response (pane capture)
-        # We use -J to join wrapped lines so JSON doesn't break at column 80.
-        res = subprocess.run(["tmux", "capture-pane", "-p", "-J", "-t", self.target, "-S", "-"],
-                             capture_output=True, text=True, check=True)
-
-        elapsed = time.monotonic() - started
+        # 5. Record the call. A turn that answered nothing still ran and still spent
+        # tokens, so it counts here exactly as a successful one does.
         self.stats["calls"] += 1
-        self.stats["duration_s"] += elapsed
+        self.stats["duration_s"] += time.monotonic() - started
 
-        # Keep only what the pane gained after this turn's prompt was echoed. Without
-        # this, a turn that produces no JSON of its own (a refusal, an error banner, a
-        # turn read as finished too early) falls through to the previous turn's answer
-        # still sitting on the visible pane and hands it back as this turn's — a stale
-        # move replayed silently, with no failure recorded anywhere. Anchor on the first
-        # occurrence, so a model that repeats the marker in its answer cannot truncate
-        # its own output.
-        anchor = res.stdout.find(nonce)
-        if anchor < 0:
-            raise AgentError("this turn's prompt never appeared in the pane")
-        turn_output = res.stdout[anchor + len(nonce):]
-
-        # Prefer an explicit fenced block if the model produced one; try the latest
-        # first, in case an earlier one belongs to draft/example text.
-        # strict=False: the CLI word-wraps long string values to the pane width by
-        # printing real newlines (not a terminal soft-wrap tmux -J could rejoin), so
-        # a captured string field can contain literal control characters that strict
-        # JSON parsing would otherwise reject.
-        # Every candidate is checked against the schema's required keys, because not all
-        # of the JSON in a turn is its answer — a model that restates the schema or
-        # sketches an example emits objects that parse fine, and parsing alone would
-        # hand one of those back, which the caller then reads as a malformed response
-        # rather than the failed turn it is. Rejecting them here turns that into a retry.
-        required = schema.get("required", [])
-
-        def accept(text: str) -> dict | None:
-            try:
-                obj = json.loads(text, strict=False)
-            except json.JSONDecodeError:
-                return None
-            if not isinstance(obj, dict) or any(key not in obj for key in required):
-                return None
-            return obj
-
-        blocks = re.findall(r'```json\s*(.*?)\s*```', turn_output, re.DOTALL)
-        for block in reversed(blocks):
-            if (obj := accept(block)) is not None:
-                return obj
-
-        # Fallback: the model often just emits raw JSON with no fence. Scan for every
-        # balanced top-level object — the echoed prompt's own schema literal is one
-        # such object, so a naive "first match" would grab that instead — and try
-        # them from the end, since the actual answer comes after the echoed prompt.
-        for candidate in reversed(list(self._iter_balanced_objects(turn_output))):
-            if (obj := accept(candidate)) is not None:
-                return obj
-
-        raise AgentError(f"no JSON object with keys {required} found in pane output")
+        if answer is None:
+            raise AgentError("this turn's prompt never appeared in the pane" if nonce not in pane
+                             else f"no JSON object with keys {required} found in pane output")
+        return answer

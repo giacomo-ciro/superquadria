@@ -16,6 +16,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 # Two sibling harnesses under src/: `harness_2d` (the maze harness) and
-# `harness_3d` (the superquadric one). `find` picks up their subpackages too.
+# `harness_3d` (the superquadric one), over the `harness_common` they share.
+# `find` picks up their subpackages too.
 [tool.setuptools.packages.find]
 where = ["src"]

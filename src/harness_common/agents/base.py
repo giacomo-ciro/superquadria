@@ -1,9 +1,9 @@
 """The Agent abstraction (PLAN.md section 4/5).
 
-An agent is one thing: `run(prompt, schema) -> structured_output`. Everything the
-harness asks of a model — invent a maze theme, draw a band of rows, choose the
-next trajectory — goes through this single call, so swapping the backend (which
-CLI drives the tmux session, `claude` or `codex`) touches nothing else in the
+An agent is one thing: `run(prompt, schema) -> structured_output`. Everything a
+harness asks of a model — invent a theme, draw a band of rows, choose the next
+trajectory — goes through this single call, so swapping the backend (which CLI
+drives the tmux session, `claude` or `codex`) touches nothing else in the
 codebase.
 """
 

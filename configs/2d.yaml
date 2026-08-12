@@ -1,4 +1,4 @@
-# Configuration for `python main.py {generate,play,run}`.
+# Configuration for `python -m harness_2d {generate,play,run,replay}`.
 # Only the command and `--offline` are CLI flags; everything else lives here.
 # Any key you omit surfaces as an OmegaConf error where it is read.
 

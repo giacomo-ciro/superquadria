@@ -21,10 +21,10 @@ import random
 from collections import deque
 from dataclasses import dataclass, field
 
-from harness_2d.agents.base import Agent, AgentError
-from harness_2d.pipeline_log import PipelineLogger
+from harness_common.agents.base import Agent, AgentError
+from harness_common.pipeline_log import PipelineLogger
 
-from .geometry import FORWARD, Vec3, apply, rotation_matrix
+from .geometry import FORWARD, ZERO, Vec3, apply, rotation_matrix
 from .scene import Player, Scene, key_primitive
 from .superquadrics import OBSTACLE, Sensor, Superquadric, SuperquadricHandler
 
@@ -45,7 +45,7 @@ WORLD_SCHEMA: dict = {
         },
         "composition_rules": {
             "type": "array",
-            "description": "3-6 concrete rules the primitives below actually follow.",
+            "description": "3-6 short notes on what the world contains and how it is arranged.",
             "items": {"type": "string"},
             "minItems": 3,
             "maxItems": 6,
@@ -102,10 +102,12 @@ class WorldGenerator:
     player_radius: float = 0.6
     move_increment: float = 0.5
     collision_resolution: int = 8
-    target_primitives: int = 48
     min_primitives: int = 12
     max_primitives: int = 80
     exponent_range: tuple[float, float] = (0.1, 4.0)
+    #: Floor on a semiaxis. It is a meshing limit, not a collision one — see
+    #: `__post_init__` — and it is what lets a fork have tines.
+    min_scale: float = 0.3
     validation_spacing: float = 3.0
     min_free_voxels: int = 400
     min_key_distance: float = 24.0
@@ -116,9 +118,15 @@ class WorldGenerator:
 
     def __post_init__(self) -> None:
         self._rng = random.Random(self.seed)
-        #: Nothing thinner than the player can be a solid obstacle: a sphere that
-        #: does not fit could tunnel through it between two movement increments.
-        self.min_scale = 2 * self.player_radius + self.move_increment
+        # Collision samples the player sphere every `move_increment` along a
+        # segment, so an obstacle lying between two samples is at most half an
+        # increment from the nearer one. While that is inside the sphere, no
+        # obstacle can be tunnelled through — however thin it is. Thickness
+        # never enters into it, which is why `min_scale` is only a meshing floor.
+        if self.move_increment >= 2 * self.player_radius:
+            raise ValueError(f"move_increment {self.move_increment} must stay under twice the "
+                             f"player radius ({2 * self.player_radius}), or the player can pass "
+                             f"through an obstacle between two collision samples")
         self.max_scale = self.bounds / 4
 
     @property
@@ -153,8 +161,8 @@ class WorldGenerator:
     # ------------------------------------------------------------------ agent
 
     def _request(self, brief: str | None) -> tuple[dict, list[Superquadric], str]:
-        self.log.start("generate", f"requesting ~{self.target_primitives} superquadrics "
-                                   f"in a {self.bounds:.0f}-unit cube")
+        self.log.start("generate", f"requesting {self.min_primitives}-{self.max_primitives} "
+                                   f"superquadrics in a {self.bounds:.0f}-unit cube")
         try:
             payload = self.agent.run(self._prompt(brief), WORLD_SCHEMA)
             design, primitives = self._parse(payload)
@@ -192,34 +200,38 @@ Each primitive is the standard superquadric surface, in its own local frame:
   y = ay * sign(cos eta)|cos eta|^e1 * sign(sin omega)|sin omega|^e2
   z = az * sign(sin eta)|sin eta|^e1
 
-so `scale = (ax, ay, az)` are the semiaxes and `exponents = (e1, e2)` set the
-shape. Useful combinations:
+`scale = (ax, ay, az)` are the semiaxes. `exponents = (e1, e2)` are continuous:
+e1 shapes the profile along local z, e2 the cross-section in local xy. Near {lo}
+an axis goes flat-sided with sharp corners; at 1.0 it is a smooth ellipse; above
+1.0 it pinches inward and turns concave. The values in between — 0.35, 0.7, 1.4 —
+are as valid as the round ones and usually read better.
 
-  (1.0, 1.0)   ellipsoid          (0.2, 0.2)   box
-  (0.2, 1.0)   cylinder along z   (1.0, 0.2)   rounded slab, square in xy
-  (2.0, 2.0)   octahedral gem     (3.0, 1.0)   pinched, concave hourglass
+`rotation` is XYZ Euler degrees applied to the local frame; e.g. (-90, 0, 0)
+points local +z along world +y. Any angles are allowed.
 
-`rotation` is XYZ Euler degrees; a primitive's local +z points along world +y
-after a rotation of (-90, 0, 0), which is how you stand a cylinder upright.
-
-BUDGET AND BOUNDS
-- Return about {self.target_primitives} primitives (hard limits: {self.min_primitives}-{self.max_primitives}).
-- Every `scale` component must be between {self.min_scale:.1f} and {self.max_scale:.0f}.
-  Anything thinner than {self.min_scale:.1f} is not a solid the player can be stopped by.
+HARD CONSTRAINTS
+- Between {self.min_primitives} and {self.max_primitives} primitives.
+- Every `scale` component must be between {self.min_scale} and {self.max_scale:.0f}.
 - Every `exponents` value must be between {lo} and {hi}.
 - No primitive may cross the cube boundary: its whole rotated extent must stay
   inside [{-half:.0f}, {half:.0f}] on every axis.
 - `color` is an index into your own `palette`.
+- Primitives sharing an `assembly` label are one object.
 
-COMPOSITION
-- Build 5-9 distinct named assemblies (arches, towers, rings, wrecks, reefs...).
-  Every primitive carries the `assembly` label of the composition it belongs to.
-- Inside an assembly, overlap primitives deliberately so they read as one solid
-  object rather than as floating parts.
-- Between assemblies, leave open flight corridors — a player must be able to fly
-  from any assembly to any other without threading a gap narrower than 4 units.
-- Spread the assemblies across all eight octants, including below y=0.
-- The composition_rules you state must be the ones the primitives actually follow.
+WHAT MAKES A GOOD WORLD
+Build recognisable things. Someone flying past should be able to name what they
+are looking at. Proportions carry that: the parts of a real object have real
+relative sizes, and an object whose parts are all roughly one size reads as a
+pile rather than a thing. Spend primitives where they buy recognition — an object
+that needs twelve parts to read correctly should get twelve, one that needs three
+should get three.
+
+Objects can stand alone or group into scenes that mean something together — a
+table with chairs pulled up to it, a stack of crates leaning on a wall. Place
+them where the composition wants them, not on a grid: uneven spacing, varied
+orientations, some things clustered and some alone, and no obligation to fill
+every region evenly. The player still has to fly between them, so leave the space
+between separate objects open and don't seal off any part of the cube.
 """
 
     # -------------------------------------------------------------- validation
@@ -373,7 +385,7 @@ COMPOSITION
             # Branches start inside the core, so the assembly reads as one solid.
             parts.append(self._make(name, anchor + direction * (core * 0.7),
                                     (rng.uniform(0, 180), rng.uniform(0, 180), rng.uniform(0, 180)),
-                                    (self.min_scale * 1.2, self.min_scale * 1.2, length),
+                                    (2.0, 2.0, length),
                                     (rng.uniform(0.2, 0.8), rng.uniform(0.2, 1.0)), palette))
         return parts
 
@@ -403,7 +415,14 @@ COMPOSITION
         nodes, component, distances, parents, spawn_cell = graph
 
         spawn = nodes[spawn_cell]
-        key_cell = self._choose_key(handler, spawn, nodes, component, distances)
+        # A fixed +Z look direction from a spawn that is usually near an edge
+        # faces an empty wall, so the first observation is blank and the agent
+        # spends its opening calls turning around. Facing the centre puts the
+        # composition in view from call one.
+        spawn_forward = (ZERO - spawn).normalized()
+        if spawn_forward == ZERO:
+            spawn_forward = FORWARD
+        key_cell = self._choose_key(handler, spawn, spawn_forward, nodes, component, distances)
         if key_cell is None:
             return None
 
@@ -415,7 +434,7 @@ COMPOSITION
         scene = Scene(
             bounds=self.bounds,
             primitives=handler,
-            player=Player(position=spawn, forward=FORWARD, radius=self.player_radius),
+            player=Player(position=spawn, forward=spawn_forward, radius=self.player_radius),
             key_id=key_id,
             meta={
                 **design,
@@ -503,8 +522,9 @@ COMPOSITION
             return None
         return nodes, component, distances, parents, seed
 
-    def _choose_key(self, handler: SuperquadricHandler, spawn: Vec3, nodes: dict[Cell, Vec3],
-                    component: list[Cell], distances: dict[Cell, int]) -> Cell | None:
+    def _choose_key(self, handler: SuperquadricHandler, spawn: Vec3, spawn_forward: Vec3,
+                    nodes: dict[Cell, Vec3], component: list[Cell],
+                    distances: dict[Cell, int]) -> Cell | None:
         """A far, initially unseen voxel centre that sits close to an assembly."""
         min_hops = max(1, math.ceil(self.min_key_distance / self.validation_spacing))
         far = [cell for cell in component if distances[cell] >= min_hops]
@@ -522,7 +542,8 @@ COMPOSITION
         probe = handler.next_id()
         for cell in candidates:
             handler.add(key_primitive(probe, nodes[cell], self.key_scale))
-            seen = any(p.id == probe for p in handler.visible_from(spawn, FORWARD, self.sensor))
+            seen = any(p.id == probe
+                       for p in handler.visible_from(spawn, spawn_forward, self.sensor))
             handler.remove(probe)
             if not seen:
                 return cell

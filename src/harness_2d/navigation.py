@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from collections import deque
 
-from .agents.base import Agent, AgentError
+from harness_common.agents.base import Agent, AgentError
+from harness_common.pipeline_log import PipelineLogger
+
 from .memory import FogMemory
 from .moves import MAX_TRAJECTORY, MOVE_SCHEMA, Move
-from .pipeline_log import PipelineLogger
 from .policies import FrontierPolicy, Policy
 from .state import State
 
