@@ -1,4 +1,4 @@
-An agent harness that **generates a 2D maze environment and then plays it**.
+An agent harness that **generates a 3D superquadric environment and then plays it**.
 Challenge spec: [TASK.md](TASK.md) · user-facing docs: [README.md](README.md). Read those before changing behaviour.
 
 ## The idea
@@ -7,58 +7,38 @@ Both halves go through one abstraction — `Agent.run(prompt, schema) -> structu
 implemented by driving an interactive coding CLI (`claude` or `codex`, chosen by the
 `agent` config group) inside a persistent tmux session.
 
-- **Generation.** One call for an entire maze generated one shot.
-- **Navigation.** A second agent sees only a 10×10 window, returns a *batch* of moves, and
-  the harness executes them one cell at a time, halting the moment one would hit a wall.
-- **Objective.** Success is `player.position == key.position`; collision is a terrain
-  lookup. Both are O(1) checks against the `Scene` — code-level, never pixel-inferred.
+- **Generation.** Two agent calls: layout designs a multi-room floor plan (assigning a `key_concept` per room); room call
+  furnishes rooms with superquadric assemblies (including a mandatory key assembly). The harness builds sealed rooms,
+  cuts doorways along the task path, and creates an embossed relief lock replica on each locked door.
+- **Navigation.** A second agent observes superquadric parameters in its field of view (grouped into anonymized assemblies)
+  and returns a batch of explicit actions — `move` (fly to a target, halting on collision), `pick` (pick up a nearby
+  assembly, within reach), `place` (place the carried assembly, or attempt the lock if placed at/near the door) — executed in order.
+- **Objective.** Success is identifying the matching key assembly from its geometric parameters and placing it at every
+  room's locked door in turn, in path order, reaching the true exit. Collision, pickup and placement are code-level
+  checks against the `Scene` / `SuperquadricHandler`, never pixel-inferred.
 
 ## Layout
 
-Three packages under [src/](src/): [harness_2d](src/harness_2d/) (the maze harness),
-[harness_3d](src/harness_3d/) (its sibling — same loop in 3D, built entirely from
-superquadrics), and [harness_common](src/harness_common/), which holds only what both
-run on. Each harness is launched the same way, `python -m harness_2d|harness_3d`, and
-reads its own config, `configs/2d.yaml` or `configs/3d.yaml`.
+Modular packages under [src/](src/):
+- [agents/](src/agents/): the `Agent` interface, the shared `TmuxAgent`, and the `claude`/`codex` backends
+- [geometry/](src/geometry/): 3D vectors, superquadric primitives, meshing, collision, and sensor
+- [world/](src/world/): floor plan layout, architectural shell, task objects, scene model, world generation
+- [navigation/](src/navigation/): parameter observations, spatial memory, waypoints, and flight policies
+- [prompts/](src/prompts/): decoupled prompt templates for layout, room furnishing, and navigation
+- [engine/](src/engine/): observe-plan-fly loop, Ursina renderer, config loader, pipeline logging, CLI
 
-### Shared
+The harness is launched via `python -m engine` and reads `configs/3d.yaml`.
 
-| Path | Role |
-| --- | --- |
-| [agents/](src/harness_common/agents/) | the `Agent` interface, the shared `TmuxAgent`, and the `claude`/`codex` backends |
-| [config.py](src/harness_common/config.py), [configs/](configs/) | Hydra/OmegaConf loader over each harness's config and the `configs/agent/` group, the single source of defaults; a CLI takes only a command + `--offline`, everything else lives here |
-| [pipeline_log.py](src/harness_common/pipeline_log.py) | one legible line per event, for runs nobody is watching |
+| Package | Role | Key Modules |
+| --- | --- | --- |
+| [agents/](src/agents/) | Agent CLI abstraction | `base.py`, `tmux_agent.py`, `claude_tmux.py`, `codex_tmux.py` |
+| [geometry/](src/geometry/) | Math & superquadrics | `geometry.py`, `superquadrics.py` |
+| [world/](src/world/) | World & generation | `layout.py`, `shell.py`, `task.py`, `scene.py`, `generation.py` |
+| [navigation/](src/navigation/) | Observation & policy | `state.py`, `memory.py`, `moves.py`, `policies.py`, `navigation.py` |
+| [prompts/](src/prompts/) | Prompt engineering | `layout.py`, `room.py`, `navigation.py` |
+| [engine/](src/engine/) | Execution & CLI | `engine.py`, `render.py`, `config.py`, `pipeline_log.py`, `cli.py` |
 
-A module belongs here only when both harnesses need it unchanged — don't move
-2D-specific code in to make it look symmetric.
-
-### 2D
-
-| Path | Role |
-| --- | --- |
-| [vector.py](src/harness_2d/vector.py), [entities.py](src/harness_2d/entities.py), [moves.py](src/harness_2d/moves.py) | grid primitives, tile codes, action vocabulary |
-| [scene.py](src/harness_2d/scene.py) | world model; owns the collision and success predicates |
-| [state.py](src/harness_2d/state.py) | the 10×10 observation handed to the agent |
-| [generation.py](src/harness_2d/generation.py), [maze_utils.py](src/harness_2d/maze_utils.py) | brief + banded drawing; parsing, repair, procedural fallback |
-| [memory.py](src/harness_2d/memory.py), [policies.py](src/harness_2d/policies.py), [navigation.py](src/harness_2d/navigation.py) | fog-of-war map, offline baseline policy, Claude policy |
-| [engine.py](src/harness_2d/engine.py) | observe → plan → execute loop and the run log |
-| [render.py](src/harness_2d/render.py), [cli.py](src/harness_2d/cli.py) | the Pygame view, `generate`/`play`/`run` commands |
-
-### 3D
-
-Design: [3D_PLAN.md](docs/3D_PLAN.md). Same `Agent.run` abstraction, from
-`harness_common.agents`.
-
-| Path | Role |
-| --- | --- |
-| [geometry.py](src/harness_3d/geometry.py), [superquadrics.py](src/harness_3d/superquadrics.py) | vectors and the one rotation order; the primitive, meshing, collision, sensor |
-| [scene.py](src/harness_3d/scene.py) | bounds, player, key; owns the collision and success predicates |
-| [generation.py](src/harness_3d/generation.py) | schema, defensive validation, procedural fallback, reachability witness |
-| [state.py](src/harness_3d/state.py), [memory.py](src/harness_3d/memory.py) | the parameter observation and the observed-only map |
-| [moves.py](src/harness_3d/moves.py), [policies.py](src/harness_3d/policies.py), [navigation.py](src/harness_3d/navigation.py) | target positions, manual flight, the agent policy |
-| [engine.py](src/harness_3d/engine.py), [render.py](src/harness_3d/render.py), [cli.py](src/harness_3d/cli.py) | the loop and replay, the Ursina view, the commands |
-
-Rules specific to it:
+Rules:
 - **The agent sees parameters, not pixels.** This is a deliberate departure from
   TASK.md's vision-policy context — document it, don't quietly present it as
   equivalent. Once any part of a primitive is detected the agent receives the whole
@@ -68,28 +48,32 @@ Rules specific to it:
 - **The handler is authoritative, Ursina is not.** Collision, success and visibility
   are computed from harness meshes, so generation and headless checks run without a
   display. Import Ursina lazily, inside the renderer only.
-- **The harness places the spawn and key, not the generation agent** — after proving
-  a route exists with the same clearance test movement uses.
+- **The harness places the spawn and objects (peg + decoys), not the generation agent**
+  — after proving a route exists with the same clearance test movement uses.
+- **The sensor has no range limit.** It sees everything in the camera frustum that
+  nothing else is hiding. Measured as having zero cost difference from the old range
+  inside sealed rooms.
+- **Colour is generation-designed.** Generation agents color assemblies following
+  each room's palette (walls, floor, ceiling). Only the lock is consistently gold.
+- **Interaction is explicit `pick`/`place`, not collision-triggered.** Flying through an
+  object or door does nothing by itself; the agent must issue a `pick`/`place` action
+  within reach (`task.DEFAULT_REACH`, 2.5 units). `place` away from the door/lock drops
+  the carried object back into the room — carrying a decoy does not force a trip to the
+  door, only the single-slot inventory does.
 
 ## Commands
 
 ```bash
 uv sync                              # Python >=3.12, deps in pyproject.toml
-python -m harness_2d run --offline   # 2D: procedural maze + manual play
-python -m harness_2d run             # 2D: agent generates, agent plays
-
-python -m harness_3d run --offline   # 3D: procedural world + manual flight
-python -m harness_3d run             # 3D: agent generates, agent flies
+python -m engine generate --offline  # procedural world, zero agent calls
+python -m engine run --offline       # procedural building + manual flight (smoke test)
+python -m engine run                 # agent generates, agent flies
+python -m engine play                # pick a saved world under worlds_3d/
+python -m engine replay              # re-watch a saved episode
 ```
 
 ## Conventions
-- **Minimal docs.** Keep documentation (README.md, helps) minimal. We are still in MVP pahse, everything can change. README should just explain entry points and overall arch, nothing more.
+- **Minimal docs.** Keep documentation (README.md, helps) minimal. We are still in MVP phase, everything can change. README should just explain entry points and overall arch, nothing more.
 - **Don't implement tests.** We are developing an MVP and we want to move fast.
-- **Never trust model output.** Parse defensively, map anything unrecognised to *wall*,
-  fall back procedurally — one bad call must not sink a run.
-- **Walls are terrain, not entities** (deliberate departure from PLAN.md §3; see README).
-- **The observation stays 10×10.** `FogMemory` is harness bookkeeping and must never hold
-  a cell the player has not actually observed.
-- README documents where the implementation departs from PLAN.md — update it when you add
-  another departure.
-- Running the loop consume agent usage credits. Do not run without asking the user or unless explicitely instructued.
+- **Never trust model output.** Parse defensively, fall back procedurally — one bad call must not sink a run.
+- Running the loop consumes agent usage credits. Do not run without asking the user or unless explicitly instructed.
