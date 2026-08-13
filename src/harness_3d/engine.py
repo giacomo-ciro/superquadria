@@ -17,7 +17,9 @@ import json
 import math
 import threading
 import time
+from bisect import bisect_right
 from dataclasses import asdict, dataclass, field
+from itertools import accumulate
 from pathlib import Path
 
 from harness_common.pipeline_log import PipelineLogger
@@ -26,9 +28,34 @@ from .geometry import Vec3
 from .memory import SpatialMemory
 from .moves import MAX_WAYPOINTS, Trajectory
 from .policies import Policy, PolicyQuit
-from .scene import Scene
+from .scene import BOUNDS, Scene
 from .state import State
 from .superquadrics import Sensor
+
+
+def _blocker_tag(blocked_by: int) -> str:
+    """A collision in the few characters a history row has room for."""
+    return f"hit {'bounds' if blocked_by == BOUNDS else f'#{blocked_by}'}"
+
+
+def move_row(record: dict) -> dict:
+    """One call record as the renderer's move-history row.
+
+    Derived rather than stored twice, so a replayed episode and a live one show
+    the same history — including episodes recorded before `gen_s` and `result`
+    existed, which report no generation time and a result rebuilt from the
+    collision alone.
+    """
+    blocked_by = record["blocked_by"]
+    blocked = blocked_by is not None
+    return {
+        "call": record["call"],
+        "gen_s": record.get("gen_s", 0.0),
+        # The waypoint the run stopped on was attempted, not flown.
+        "flown": len(record["accepted"]) - (1 if blocked else 0),
+        "planned": len(record["requested"]),
+        "result": record.get("result") or (_blocker_tag(blocked_by) if blocked else "flew"),
+    }
 
 
 @dataclass
@@ -83,11 +110,14 @@ class Episode:
         self.start = scene.player.position
         self.start_forward = scene.player.forward
         self._aborted = False
+        #: One row per completed agent call, drawn as the window's move history.
+        self.history: list[dict] = []
+        self.started = time.monotonic()
 
     # -------------------------------------------------------------------- run
 
     def run(self) -> EpisodeResult:
-        started = time.monotonic()
+        self.started = time.monotonic()
         budgets = self.budgets
         outcome = "start"
         reason = "agent-call budget exhausted"
@@ -117,6 +147,7 @@ class Episode:
 
             self.log.start(self.calls, f"call {self.calls + 1}: requesting a batch "
                                        f"@{self.scene.player.position}")
+            asked = time.monotonic()
             try:
                 trajectory = self._act(state)
             except PolicyQuit:
@@ -125,8 +156,10 @@ class Episode:
             if trajectory is None:
                 reason = "closed by user"
                 break
+            gen_s = time.monotonic() - asked
             self.calls += 1
 
+            departed = time.monotonic()
             record = self._execute(trajectory)
             if self._aborted:
                 reason = "closed by user"
@@ -135,7 +168,13 @@ class Episode:
             outcome = self._describe(record, len(trajectory))
             record["call"] = self.calls
             record["reasoning"] = trajectory.reasoning
+            record["gen_s"] = round(gen_s, 1)
+            # Thinking and flying, split: together they account for the episode's
+            # whole wall clock, which is what a replay needs to re-time it.
+            record["fly_s"] = round(time.monotonic() - departed, 2)
+            record["result"] = self._tag(record)
             trajectory_log.append(record)
+            self.history.append(move_row(record))
             self.log.end(self.calls, f"call {self.calls}: {outcome}")
 
             if self.scene.key_reached():
@@ -151,7 +190,7 @@ class Episode:
             collisions=self.collisions,
             distance=round(self.distance, 2),
             observed=len(memory.primitives) if memory else 0,
-            wall_time_s=time.monotonic() - started,
+            wall_time_s=time.monotonic() - self.started,
             start=self.start.rounded(3),
             start_forward=self.start_forward.rounded(4),
             key=self.scene.key.position.rounded(3),
@@ -292,6 +331,20 @@ class Episode:
         return {"requested": [list(p) for p in requested], "accepted": [list(p) for p in accepted],
                 "poses": poses, "blocked_by": blocked_by, "observed": after - observed_before}
 
+    def _tag(self, record: dict) -> str:
+        """The same call, in the few characters a history row has room for.
+
+        `_describe` is prose written for the agent; this is written for a column,
+        so the blocker is its id rather than `describe_blocker`'s full phrase.
+        """
+        gained = f" +{record['observed']}" if record["observed"] else ""
+        blocked_by = record["blocked_by"]
+        if blocked_by is not None:
+            return f"{_blocker_tag(blocked_by)}{gained}"
+        if self.scene.key_reached():
+            return f"key!{gained}"
+        return f"flew{gained}"
+
     def _describe(self, record: dict, planned: int) -> str:
         done, blocked_by = len(record["accepted"]), record["blocked_by"]
         gained = f" You detected {record['observed']} new shape(s)." if record["observed"] else ""
@@ -315,6 +368,8 @@ class Episode:
             "agent_model": getattr(getattr(self.policy, "agent", None), "model", None),
             "agent_effort": getattr(getattr(self.policy, "agent", None), "effort", None),
             "waiting_s": waiting_s,
+            "history": self.history,
+            "elapsed_s": time.monotonic() - self.started,
         })
 
 
@@ -340,6 +395,11 @@ class Replay:
         self.step_delay = step_delay if step_delay > 0 else 0.02
         self.poses = [(Vec3(*pose[:3]), Vec3(*pose[3:])) for call in result.trajectory
                       for pose in call["poses"]]
+        self.history = [move_row(call) for call in result.trajectory]
+        #: The pose index each call finishes on. A move is revealed once playback
+        #: has flown it, which is the point the live run appended its row — a log
+        #: that is complete from frame one tells you nothing about where you are.
+        self.call_ends = list(accumulate(len(call["poses"]) for call in result.trajectory))
         self.start = (Vec3(*result.start), Vec3(*result.start_forward))
         #: Rebuilt as playback advances rather than up front: one sensor pass per
         #: recorded increment is real work, and doing it lazily is also what makes
@@ -396,6 +456,10 @@ class Replay:
             "max_distance": self.result.distance, "policy": self.policy_name,
             "agent_model": self.agent_model, "agent_effort": self.agent_effort,
             "replay": f"{index}/{len(self.poses)}",
+            "history": self.history[:bisect_right(self.call_ends, index)],
+            # The original run's clock, not this playback's: how long the episode
+            # took is a property of the episode.
+            "elapsed_s": self.result.wall_time_s,
         })
 
 

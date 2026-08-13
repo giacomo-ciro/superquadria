@@ -46,6 +46,18 @@ AMBIENT = 0.5
 #: every episode silhouetted against the background.
 LIGHT_DIRECTION = (-0.35, 0.55, 1.0)
 
+#: How many past moves the history panel keeps on screen. Older ones scroll off
+#: with a count of what was dropped — the episode JSON is the full record, the
+#: window is for what just happened.
+MOVE_HISTORY_ROWS = 12
+
+
+def _clock(seconds: float) -> str:
+    """mm:ss, growing an hours field only once there is one."""
+    hours, rest = divmod(int(seconds), 3600)
+    minutes, secs = divmod(rest, 60)
+    return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes:02d}:{secs:02d}"
+
 
 def _matte_shader():
     """Lambert shading over the mesh's own vertex colours.
@@ -163,6 +175,10 @@ class UrsinaRenderer:
                         color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
         self.footer = Text(parent=camera.ui, text="", position=(-0.86, -0.44), scale=0.7,
                            color=color.rgba(0.55, 0.60, 0.68, 1.0), font="VeraMono.ttf")
+        #: Move history and the episode clock, in the column the left HUD leaves
+        #: free — below the view button, which owns the top right corner.
+        self.moves = Text(parent=camera.ui, text="", position=(0.48, 0.40), scale=0.7,
+                          color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
         self.crosshair = Text(parent=camera.ui, text="+", position=(0, 0), origin=(0, 0),
                               scale=1.2, color=color.rgba(0.9, 0.9, 0.9, 0.5))
         self.view_button = Button(parent=camera.ui, text="view: first person", text_size=0.55,
@@ -230,6 +246,7 @@ class UrsinaRenderer:
             self._camera.position = scene.player.position.as_tuple()
             self._camera.rotation = (pitch, yaw, 0)
         self.hud.text = self._hud_text(state, memory, info)
+        self.moves.text = self._moves_text(info)
         self.footer.text = self._footer_text(info)
 
         try:
@@ -349,6 +366,41 @@ class UrsinaRenderer:
         if info.get("replay"):
             lines.append(f"replay      {info['replay']}")
         return "\n".join(lines)
+
+    def _moves_text(self, info: dict) -> str:
+        """Total runtime, then one row per agent call.
+
+        A move is one call — a whole batch of waypoints — which is also the only
+        unit that has a generation time worth reporting. Manual flight issues a
+        call per movement increment, so it gets the clock and no rows: thousands
+        of sub-millisecond "moves" say nothing about how the flight is going.
+        """
+        elapsed = f"run {_clock(info.get('elapsed_s', 0.0))}"
+        header = f"moves{elapsed:>19}"
+        if info.get("policy") == "manual":
+            return header
+
+        history = info.get("history") or []
+        rows = [self._move_row(row["call"], row["gen_s"], f"{row['flown']}/{row['planned']}",
+                               row["result"]) for row in history[-MOVE_HISTORY_ROWS:]]
+        # The call in flight has no row yet, and a long one is exactly when the
+        # panel is being read, so it gets a provisional row with a live timer.
+        if info.get("phase") == "thinking":
+            rows.append(self._move_row(info.get("calls", 0) + 1, info.get("waiting_s") or 0.0,
+                                       "..", "thinking", pending=True))
+        if not rows:
+            return f"{header}\n\n  no moves yet"
+
+        dropped = len(history) - MOVE_HISTORY_ROWS
+        lines = [header, "  #    gen  flown  result"]
+        if dropped > 0:
+            lines.append(f"  ...  {dropped} earlier")
+        return "\n".join(lines + rows)
+
+    @staticmethod
+    def _move_row(call: int, gen_s: float, waypoints: str, result: str,
+                  *, pending: bool = False) -> str:
+        return f"{'>' if pending else ' '}{call:>2} {gen_s:>5.1f}s {waypoints:>5}  {result[:14]}"
 
     def _footer_text(self, info: dict) -> str:
         if self.third_person:
