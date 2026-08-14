@@ -90,14 +90,14 @@ def _matte_shader():
     from ursina.shader import Shader
 
     return Shader(name="matte_shader", language=Shader.GLSL, vertex="""
-#version 140
+#version 120
 uniform mat4 p3d_ModelViewProjectionMatrix;
 uniform mat3 p3d_NormalMatrix;
-in vec4 p3d_Vertex;
-in vec3 p3d_Normal;
-in vec4 p3d_Color;
-out vec3 view_normal;
-out vec4 albedo;
+attribute vec4 p3d_Vertex;
+attribute vec3 p3d_Normal;
+attribute vec4 p3d_Color;
+varying vec3 view_normal;
+varying vec4 albedo;
 
 void main() {
     gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;
@@ -105,19 +105,44 @@ void main() {
     albedo = p3d_Color;
 }
 """, fragment="""
-#version 140
+#version 120
 uniform vec3 light_direction;
 uniform float ambient;
-in vec3 view_normal;
-in vec4 albedo;
-out vec4 fragment_color;
+varying vec3 view_normal;
+varying vec4 albedo;
 
 void main() {
     float wrapped = 0.5 + 0.5 * dot(normalize(view_normal), normalize(light_direction));
     float light = ambient + (1.0 - ambient) * wrapped * wrapped;
-    fragment_color = vec4(albedo.rgb * light, 1.0);
+    gl_FragColor = vec4(albedo.rgb * light, 1.0);
 }
 """, default_input={"light_direction": Vec3(*LIGHT_DIRECTION), "ambient": AMBIENT})
+
+
+def _unlit_shader():
+    """Unlit shading over the mesh's vertex colours or entity color scale."""
+    from ursina.shader import Shader
+
+    return Shader(name="unlit_shader", language=Shader.GLSL, vertex="""
+#version 120
+uniform mat4 p3d_ModelViewProjectionMatrix;
+attribute vec4 p3d_Vertex;
+attribute vec4 p3d_Color;
+varying vec4 vertex_color;
+
+void main() {
+    gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;
+    vertex_color = p3d_Color;
+}
+""", fragment="""
+#version 120
+uniform vec4 p3d_ColorScale;
+varying vec4 vertex_color;
+
+void main() {
+    gl_FragColor = p3d_ColorScale * vertex_color;
+}
+""")
 
 
 @dataclass
@@ -221,6 +246,7 @@ class UrsinaRenderer:
         #: renders, and the GPU handles culling and occlusion.
         self.mesh_resolution = mesh_resolution
         self._matte_shader = _matte_shader()
+        self._unlit_shader = _unlit_shader()
         self._entity_keys: dict[int, tuple] = {}
         self.entities = {}
         for prim in scene.primitives:
@@ -293,19 +319,18 @@ class UrsinaRenderer:
     def _build_agent(self, scene: Scene, policy_name: str | None) -> None:
         """Picks the agent's third-person body once `info["policy"]` is known."""
         from ursina import Entity, Mesh, color
-        from ursina.shaders import unlit_shader
 
         from geometry.agent_marks import MARKS_BY_POLICY
 
         mark = MARKS_BY_POLICY.get(policy_name)
         if mark is None:
             self.agent = Entity(model="sphere", scale=scene.player.radius * 2, enabled=False,
-                                shader=unlit_shader, color=color.rgba(*AGENT_COLOR))
+                                shader=self._unlit_shader, color=color.rgba(*AGENT_COLOR))
         else:
             self.agent = Entity(
                 model=Mesh(vertices=mark.vertices, triangles=mark.triangles,
                            normals=mark.normals, colors=[color.rgba(*c) for c in mark.colors]),
-                scale=scene.player.radius, enabled=False, shader=unlit_shader,
+                scale=scene.player.radius, enabled=False, shader=self._unlit_shader,
             )
         self.carried_entity = Entity(parent=self.agent, enabled=False, shader=self._matte_shader)
 
