@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from geometry import FORWARD, Vec3
-from geometry.superquadrics import LOCK, Sensor, Superquadric, SuperquadricHandler
+from geometry.superquadrics import DOOR, LOCK, PORTAL, Sensor, Superquadric, SuperquadricHandler
 
 #: Stands in for a primitive ID when the thing you hit is the world boundary.
 #: Real primitive IDs are non-negative, so the two can never be confused.
