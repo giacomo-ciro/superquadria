@@ -30,7 +30,7 @@ from navigation.policies import Policy, PolicyQuit
 from world.scene import BOUNDS, Scene
 from world.task import attempt_unlock, pick_at, place_at, task_for_door_or_lock, try_pickup
 
-from .pipeline_log import PipelineLogger
+from .logger import Logger, logger
 
 
 def _blocker_tag(blocked_by: int) -> str:
@@ -90,13 +90,13 @@ class Episode:
     """One run of one policy against one scene."""
 
     def __init__(self, scene: Scene, policy: Policy, *, sensor: Sensor, budgets: Budgets,
-                 renderer=None, log: PipelineLogger | None = None, step_delay: float = 0.0):
+                 renderer=None, log: Logger | None = None, step_delay: float = 0.0):
         self.scene = scene
         self.policy = policy
         self.sensor = sensor
         self.budgets = budgets
         self.renderer = renderer
-        self.log = log if log is not None else PipelineLogger("episode3d")
+        self.log = log if log is not None else Logger("episode")
         self.step_delay = step_delay
 
         self.calls = 0
@@ -127,9 +127,9 @@ class Episode:
         outcome = "start"
         reason = "agent-call budget exhausted"
         trajectory_log: list[dict] = []
-        self.log.start(0, f"episode start: spawn={self.start} "
-                          f"room={self.scene.current_room_name(self.start)} "
-                          f"max_calls={budgets.max_calls} max_distance={budgets.max_distance}")
+        self.log.log(f"start: spawn={self.start.rounded(1)} "
+                     f"room='{self.scene.current_room_name(self.start)}' "
+                     f"max_calls={budgets.max_calls} max_distance={budgets.max_distance:.0f}m", stage="episode")
 
         while True:
             if self.rooms_cleared >= self.rooms_to_clear:
@@ -151,8 +151,7 @@ class Episode:
                 reason = "closed by user"
                 break
 
-            self.log.start(self.calls, f"call {self.calls + 1}: requesting a batch "
-                                       f"@{self.scene.player.position}")
+            self.log.log(f"call {self.calls + 1}: requesting action batch @ {self.scene.player.position.rounded(1)}", stage="navigation:agent")
             asked = time.monotonic()
             try:
                 trajectory = self._act(state)
@@ -165,10 +164,8 @@ class Episode:
             gen_s = time.monotonic() - asked
             self.calls += 1
 
-            if trajectory.reasoning:
-                self.log.info(self.calls, f"reasoning: {trajectory.reasoning}")
             for idx, act in enumerate(trajectory.actions, 1):
-                self.log.info(self.calls, f"action {idx}: {act.type.upper()} @ {act.target.rounded(2)}")
+                self.log.log(f"call {self.calls}: action {idx}/{len(trajectory.actions)}: {act.type.upper()} @ {act.target.rounded(1)}", stage="navigation:action")
 
             departed = time.monotonic()
             record = self._execute(trajectory, gen_s=gen_s)
@@ -186,7 +183,7 @@ class Episode:
             record["result"] = self._tag(record)
             trajectory_log.append(record)
             self.history.append(move_row(record))
-            self.log.end(self.calls, f"call {self.calls}: {outcome}")
+            self.log.log(f"call {self.calls}: {outcome}", stage="episode")
 
             if self.rooms_cleared >= self.rooms_to_clear:
                 reason = "reached the exit"
@@ -208,7 +205,7 @@ class Episode:
             start_forward=self.start_forward.rounded(4),
             trajectory=trajectory_log,
         )
-        self.log.end(self.calls, f"episode end: {result.summary()}")
+        self.log.log(f"end: {result.summary()}", stage="episode")
         self._draw(self._observe(reason), "solved" if solved else "stopped")
         return result
 

@@ -1,5 +1,5 @@
-"""Re-export of PipelineLogger."""
+"""Re-export of unified Logger."""
 
-from agents.pipeline_log import PipelineLogger
+from .logger import Logger, PipelineLogger, logger
 
-__all__ = ["PipelineLogger"]
+__all__ = ["Logger", "PipelineLogger", "logger"]

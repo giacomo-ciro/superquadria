@@ -216,6 +216,33 @@ def _find_walls_without_doors(scene: Scene) -> set[int]:
     return hidden
 
 
+def _silence_engine_logs() -> None:
+    """Mute noisy Panda3D C++ notify diagnostics and Ursina stdout logs."""
+    try:
+        import panda3d.core as p3d
+        p3d.load_prc_file_data("", "notify-level fatal")
+        p3d.load_prc_file_data("", "notify-level-glgsg fatal")
+        p3d.load_prc_file_data("", "notify-level-display fatal")
+        p3d.load_prc_file_data("", "notify-level-cocoadisplay fatal")
+        p3d.load_prc_file_data("", "notify-level-pnmimage fatal")
+        p3d.load_prc_file_data("", "print-pipe-types false")
+        p3d.load_prc_file_data("", "textures-header-only true")
+        p3d.load_prc_file_data("", "textures-fail-silently true")
+    except ImportError:
+        pass
+
+    try:
+        import sys
+        import ursina
+        for mod in list(sys.modules.values()):
+            if mod and hasattr(mod, "print_info"):
+                mod.print_info = lambda *a, **k: None
+            if mod and hasattr(mod, "print_warning"):
+                mod.print_warning = lambda *a, **k: None
+    except ImportError:
+        pass
+
+
 class UrsinaRenderer:
     """Window onto an episode, first person or orbiting third person.
 
@@ -227,13 +254,24 @@ class UrsinaRenderer:
 
     def __init__(self, scene: Scene, *, sensor: Sensor, mesh_resolution: int = 16,
                  size: tuple[int, int] = (1280, 720), mouse_look: bool = False):
+        import io
+        import sys
+
+        _silence_engine_logs()
+
         from ursina import Entity, Mesh, Text, Ursina, camera, color, mouse, window
 
         self._camera = camera
-        #: `Ursina` is a singleton proxy, so a checker sees none of `ShowBase`.
-        self.app: Any = Ursina(title="superquadric harness", size=size, vsync=True,
-                               development_mode=False, editor_ui_enabled=False, fullscreen=False,
-                               show_ursina_splash=False)
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        try:
+            #: `Ursina` is a singleton proxy, so a checker sees none of `ShowBase`.
+            self.app: Any = Ursina(title="superquadric harness", size=size, vsync=True,
+                                   development_mode=False, editor_ui_enabled=False, fullscreen=False,
+                                   show_ursina_splash=False)
+        finally:
+            sys.stdout = old_stdout
+
         window.color = color.rgb(*BACKGROUND)  # pyright: ignore[reportCallIssue]
 
         camera.fov = sensor.fov  # pyright: ignore[reportAttributeAccessIssue]
@@ -251,6 +289,20 @@ class UrsinaRenderer:
         #: an instance, and every entity below would otherwise be an error.
         self._matte_shader: Any = _matte_shader()
         self._unlit_shader: Any = _unlit_shader()
+
+        # Display a loading message on screen while building primitive meshes
+        from ursina import destroy
+        loading_text = Text(
+            parent=camera.ui,
+            text=f"Loading world ({len(scene.primitives)} primitives)...",
+            position=(0, 0),
+            origin=(0, 0),
+            scale=1.1,
+            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            font="VeraMono.ttf",
+        )
+        self.app.step()
+
         self._entity_keys: dict[int, tuple] = {}
         self.entities = {}
         for prim in scene.primitives:
@@ -265,6 +317,8 @@ class UrsinaRenderer:
             )
             self._entity_keys[prim.id] = (prim.position.as_tuple(), prim.rotation, prim.scale, prim.exponents, prim.color)
 
+        destroy(loading_text)
+
         #: The agent's body: the driving model's own brand mark, or a plain
         #: sphere when there is no LLM policy to mark (manual play, tests). It
         #: exists only for third person — in first person the camera sits
@@ -274,13 +328,16 @@ class UrsinaRenderer:
         self.carried_entity: Entity | None = None
         self._carried_prim_key = None
 
+        left_x = window.left.x + 0.03
+        right_x = max(0.35, window.right.x - 0.46)
+
         self.show_hud = True
-        self.hud = Text(parent=camera.ui, text="", position=(-0.86, 0.47), scale=0.65,
+        self.hud = Text(parent=camera.ui, text="", position=(left_x, 0.47), scale=0.65,
                         color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
-        self.footer = Text(parent=camera.ui, text="", position=(-0.86, -0.45), scale=0.65,
+        self.footer = Text(parent=camera.ui, text="", position=(left_x, -0.45), scale=0.65,
                            color=color.rgba(0.55, 0.60, 0.68, 1.0), font="VeraMono.ttf")
         #: Move history, agent reasoning and actions in the right column.
-        self.moves = Text(parent=camera.ui, text="", position=(0.42, 0.47), scale=0.65,
+        self.moves = Text(parent=camera.ui, text="", position=(right_x, 0.47), scale=0.65,
                           color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
         #: Last text assigned to each panel — Ursina rebuilds glyph meshes on
         #: every `.text =`, so skipping the assignment when nothing changed
@@ -458,6 +515,14 @@ class UrsinaRenderer:
         else:
             self._camera.position = scene.player.position.as_tuple()
             self._camera.rotation = (pitch, yaw, 0)
+        from ursina import window
+        left_x = window.left.x + 0.03
+        right_x = max(0.35, window.right.x - 0.46)
+        if self.hud.x != left_x:
+            self.hud.x = left_x
+            self.footer.x = left_x
+            self.moves.x = right_x
+
         if self.show_hud:
             hud_text = self._hud_text(state, memory, info)
             moves_text = self._moves_text(info)
@@ -576,11 +641,11 @@ class UrsinaRenderer:
             f"THEME: {self.theme}",
         ]
         if self.theme_description:
-            lines.extend(_wrap_text(self.theme_description, width=38))
+            lines.extend(_wrap_text(self.theme_description, width=38, max_lines=4))
         lines.append("")
         lines.append(f"ROOM:  {state.room or 'unknown'}")
         if state.room_description:
-            lines.extend(_wrap_text(state.room_description, width=38))
+            lines.extend(_wrap_text(state.room_description, width=38, max_lines=4))
 
         lines.extend([
             "",

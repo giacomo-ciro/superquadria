@@ -29,7 +29,7 @@ from typing import Callable
 
 from agents.base import Agent, AgentError
 from agents.tmux_agent import TmuxAgent
-from engine.pipeline_log import PipelineLogger
+from engine.logger import Logger, logger
 from geometry import FORWARD, ZERO, Matrix3, Vec3, apply, rotation_matrix
 from geometry.superquadrics import OBSTACLE, Sensor, Superquadric, SuperquadricHandler
 from prompts.layout import layout_prompt
@@ -293,7 +293,7 @@ def _aabb_overlaps(lo1, hi1, lo2, hi2) -> bool:
 
 
 def _instantiate(payload: dict, origin: Vec3, interior, room_name: str,
-                 log: PipelineLogger) -> list[Superquadric]:
+                 log: Logger) -> list[Superquadric]:
     """Turn one `objects` + `placements` payload into world-space primitives.
 
     Objects are modelled once each in their own local frame; a placement stands
@@ -515,9 +515,10 @@ def _room_reachable(furniture: list[Superquadric], room: Room, doors: list[Door]
     return True
 
 
-def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: WorldConfig, rng: random.Random,
-                  *, brief: str | None, collision_resolution: int, move_increment: float,
-                  log: PipelineLogger) -> tuple[list[Superquadric], str]:
+def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: WorldConfig,
+                  rng: random.Random, *, brief: str | None = None,
+                  collision_resolution: int = 8, move_increment: float = 0.5,
+                  log: Logger, room_idx: int = 1, total_rooms: int = 1) -> tuple[list[Superquadric], str]:
     """Furnish one room. A pure function of its inputs: same room, doors and
     agent response in, same validated primitives (or an empty list) out — which
     is what lets calling it once now, N times in a pool later, or in the
@@ -527,13 +528,19 @@ def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: World
     (x0, y0, z0), (x1, y1, z1) = interior
     origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
 
+    room_label = f"room {room_idx}/{total_rooms} '{room.name}'"
+    dur = 0.0
     if agent is not None:
+        log.log(f"{room_label}: prompting agent...", stage="generation:room")
+        t0 = time.monotonic()
         try:
             payload = agent.run(room_prompt(room, doors, cfg, interior, origin, brief=brief),
                                 ROOM_SCHEMA)
             source = "agent"
+            dur = time.monotonic() - t0
         except (AgentError, ValueError, KeyError, TypeError) as exc:
-            log.info("room", f"{room.name}: room generation fell back to procedural: {exc}")
+            dur = time.monotonic() - t0
+            log.log(f"{room_label}: fell back to procedural ({exc})", stage="generation:room")
             payload = _procedural_room(rng, interior, key_concept=room.key_concept)
             source = f"fallback:{type(exc).__name__}"
     else:
@@ -546,17 +553,21 @@ def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: World
     for prim in _instantiate(payload, origin, interior, room.name, log):
         lo, hi = prim.aabb()
         if not _aabb_inside(lo, hi, interior):
-            log.info("room", f"{room.name}: rejected part of '{prim.assembly}' (outside room interior bounds)")
             continue
         if any(_aabb_overlaps(lo, hi, *clearance) for clearance in clearances):
-            log.info("room", f"{room.name}: rejected part of '{prim.assembly}' (overlaps door clearance)")
             continue
         validated.append(prim)
 
     if not _room_reachable(validated, room, doors, cfg, collision_resolution=collision_resolution,
                            move_increment=move_increment):
-        log.info("room", f"{room.name}: local flood cannot reach every doorway with {len(validated)} primitives — shipped as a bare shell")
+        log.log(f"{room_label}: local flood cannot reach every doorway with {len(validated)} primitives — shipped as a bare shell", stage="generation:room")
         return [], source
+
+    if agent is not None and source == "agent":
+        log.log(f"{room_label}: ok ({dur:.1f}s, {len(validated)} primitives)", stage="generation:room")
+    elif agent is not None and source != "agent":
+        log.log(f"{room_label}: procedural ({len(validated)} primitives)", stage="generation:room")
+
     return validated, source
 
 
@@ -584,7 +595,7 @@ class WorldGenerator:
     tol_scale: float = 0.05
     tol_exp: float = 0.05
     sensor: Sensor = field(default_factory=Sensor)
-    log: PipelineLogger = field(default_factory=lambda: PipelineLogger("gen3d"))
+    log: Logger = field(default_factory=lambda: Logger("generation"))
     seed: int | None = None
 
     def __post_init__(self) -> None:
@@ -611,8 +622,8 @@ class WorldGenerator:
             if scene is not None:
                 return scene
         except ValueError as exc:
-            self.log.info("generate", f"layout repair failed: {exc}")
-        self.log.info("generate", "falling back to the procedural layout")
+            self.log.log(f"layout repair failed: {exc}", stage="generation")
+        self.log.log("falling back to the procedural layout", stage="generation")
         return self.generate_offline()
 
     def generate_offline(self) -> Scene:
@@ -633,14 +644,13 @@ class WorldGenerator:
     def _request_layout(self, brief: str | None) -> tuple[dict, str]:
         if self.agent is None:
             return layout_module.procedural_layout(self._rng, self.cfg), "procedural"
-        self.log.start("layout", f"requesting a floor plan for a {self.bounds:.0f}-unit building")
+        self.log.log(f"requesting floor plan for a {self.bounds:.0f}-unit building", stage="generation:layout")
         try:
             raw = self.agent.run(layout_prompt(self.cfg, brief), LAYOUT_SCHEMA)
-            self.log.end("layout", f"{raw.get('theme', '?')}: {len(raw.get('rooms') or [])} "
-                                   f"room(s) proposed")
+            self.log.log(f"{raw.get('theme', '?')}: {len(raw.get('rooms') or [])} room(s) proposed", stage="generation:layout")
             return raw, "agent"
         except (AgentError, ValueError, KeyError, TypeError) as exc:
-            self.log.info("layout", f"layout generation fell back to procedural: {exc}")
+            self.log.log(f"layout generation fell back to procedural: {exc}", stage="generation:layout")
             return layout_module.procedural_layout(self._rng, self.cfg), f"fallback:{type(exc).__name__}"
 
     def _get_room_agent(self, room: Room, idx: int = 1) -> Agent | None:
@@ -660,6 +670,7 @@ class WorldGenerator:
                 retry_backoff=self.agent.retry_backoff,
                 cwd=self.agent.cwd,
                 effort=self.agent.effort,
+                log=self.log.scoped("generation:agent"),
             )
         return self.agent
 
@@ -691,13 +702,14 @@ class WorldGenerator:
         # Every room on the path is furnished — the player flies through each
         # one on the way to the exit, so none of them can be left a bare shell.
         target_rooms = [(built.rooms[idx], doors_by_room[idx]) for idx in built.path]
+        total_rooms = len(target_rooms)
 
         def _furnish_task(room_agent: Agent | None, room: Room, doors: list[Door],
-                          rng: random.Random) -> tuple[Room, list[Superquadric], str]:
+                          rng: random.Random, idx: int) -> tuple[Room, list[Superquadric], str]:
             prims, r_source = generate_room(
                 room_agent, room, doors, self.cfg, rng, brief=brief,
                 collision_resolution=self.collision_resolution, move_increment=self.move_increment,
-                log=self.log)
+                log=self.log, room_idx=idx, total_rooms=total_rooms)
             return room, prims, r_source
 
         room_agents = [self._get_room_agent(r, i + 1) if use_agent else None for i, (r, _) in enumerate(target_rooms)]
@@ -705,8 +717,8 @@ class WorldGenerator:
         try:
             with ThreadPoolExecutor(max_workers=len(target_rooms)) as executor:
                 futures = [
-                    executor.submit(_furnish_task, r_agent, r, d, random.Random(self._rng.randint(0, 10**9)))
-                    for r_agent, (r, d) in zip(room_agents, target_rooms)
+                    executor.submit(_furnish_task, r_agent, r, d, random.Random(self._rng.randint(0, 10**9)), i + 1)
+                    for i, (r_agent, (r, d)) in enumerate(zip(room_agents, target_rooms))
                 ]
                 for f in futures:
                     room_results.append(f.result())
@@ -808,8 +820,8 @@ class WorldGenerator:
         scene = Scene(bounds=self.bounds, primitives=handler,
                       player=Player(position=spawn, forward=spawn_forward, radius=self.player_radius),
                       meta=meta)
-        self.log.end("generate", f"{built.theme}: {len(built.rooms)} room(s), {len(handler)} "
-                                 f"primitives, spawn in {room0.name}, exit in {exit_room.name}")
+        self.log.log(f"{built.theme} ({len(built.rooms)} room(s), {len(handler)} "
+                     f"primitives, spawn in '{room0.name}', exit in '{exit_room.name}')", stage="generation")
         return scene
 
     def _layout_meta(self, built: Layout) -> dict:

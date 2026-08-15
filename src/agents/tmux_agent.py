@@ -24,7 +24,7 @@ import uuid
 from dataclasses import dataclass, field
 
 from .base import Agent, AgentError
-from .pipeline_log import PipelineLogger
+from .pipeline_log import Logger, logger
 
 _SESSION_LOCK = threading.Lock()
 
@@ -73,7 +73,7 @@ class TmuxAgent(Agent):
 
     #: Populated as calls complete; surfaced in the run log.
     stats: dict = field(default_factory=lambda: {"calls": 0, "retries": 0, "duration_s": 0.0})
-    log: PipelineLogger = field(default_factory=lambda: PipelineLogger("tmux_agent"))
+    log: Logger = field(default_factory=lambda: Logger("agent"))
 
     #: Pane markers meaning "a turn is running"; see the concrete agents.
     busy_regex: re.Pattern = re.compile(r"(?i)esc (to )?interrupt")
@@ -104,25 +104,27 @@ class TmuxAgent(Agent):
         last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
             call_no = self.stats["calls"] + 1
-            self.log.start(call_no, f"attempt {attempt + 1}/{self.max_retries + 1} "
-                                    f"target={self.session_name}:{self.window_name}")
+            if attempt == 0:
+                self.log.log(f"call {call_no}: attempt 1/{self.max_retries + 1} ({self.model or self.binary}, effort={self.effort or 'default'})")
+            else:
+                self.log.log(f"call {call_no}: attempt {attempt + 1}/{self.max_retries + 1}")
             try:
                 result = self._invoke(prompt, schema, system=system)
-                self.log.end(call_no, f"ok, {self.stats['duration_s']:.1f}s total")
+                self.log.log(f"call {call_no}: ok ({self.stats['duration_s']:.1f}s)")
                 return result
             except Exception as exc:
                 last_error = exc
                 # A cancelled turn fails like any other; without this the retry
                 # would resubmit into the pane we just interrupted.
                 if self._cancelled:
-                    self.log.info(call_no, "cancelled")
+                    self.log.log(f"call {call_no}: cancelled")
                     break
                 if attempt == self.max_retries:
-                    self.log.info(call_no, f"failed, out of retries: {exc}")
+                    self.log.log(f"call {call_no}: failed, out of retries: {exc}")
                     break
                 self.stats["retries"] += 1
                 backoff = self.retry_backoff * (attempt + 1)
-                self.log.info(call_no, f"failed, retrying in {backoff:.0f}s: {exc}")
+                self.log.log(f"call {call_no}: failed, retrying in {backoff:.0f}s: {exc}")
                 # Force a fresh window for the retry instead of resubmitting into
                 # this one, which may be left mid-response or otherwise confused.
                 self._is_initialized = False
@@ -247,8 +249,7 @@ class TmuxAgent(Agent):
         # Printed now rather than after the boot wait, so it can be pasted while the CLI
         # is still starting. `ignore-size` lets a watcher use copy mode without changing
         # the pinned pane dimensions the response capture relies on.
-        self.log.info(self.stats["calls"] + 1,
-                      f"watch this agent: tmux attach -f ignore-size -t {self.session_name}:{self.window_name}")
+        self.log.log(f"attach: tmux attach -f ignore-size -t {self.session_name}:{self.window_name}")
 
         # Wait for the CLI to boot and settle its TUI, rather than guessing a fixed delay.
         self._wait_idle(15.0, min_wait=1.5)

@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 
 from agents.base import Agent, AgentError
-from engine.pipeline_log import PipelineLogger
+from engine.logger import Logger, logger
 
 from .memory import SpatialMemory
 from .moves import MAX_WAYPOINTS, TRAJECTORY_SCHEMA, Trajectory
@@ -31,7 +31,7 @@ class WaypointNavigator(Policy):
     def __init__(self, agent: Agent, *, sensor_range: float = math.inf, max_waypoints: int = MAX_WAYPOINTS,
                  max_segment: float = 15.0, call_budget: int | None = None,
                  distance_budget: float | None = None, collision_budget: int | None = None,
-                 log: PipelineLogger | None = None):
+                 log: Logger | None = None):
         self.agent = agent
         self.name = getattr(agent, "binary", type(self).name)
         self.sensor_range = sensor_range
@@ -40,7 +40,7 @@ class WaypointNavigator(Policy):
         self.call_budget = call_budget
         self.distance_budget = distance_budget
         self.collision_budget = collision_budget
-        self.log = log if log is not None else PipelineLogger("nav3d")
+        self.log = log if log is not None else Logger("navigation")
         self.failures = 0
         self.cancelled = False
 
@@ -60,7 +60,7 @@ class WaypointNavigator(Policy):
             if self.cancelled:
                 raise  # the user quit mid-call; the engine has stopped caring
             self.failures += 1
-            self.log.info(state.calls, f"agent call failed ({exc}); this turn does not move")
+            self.log.log(f"call {state.calls + 1}: agent call failed ({exc}); this turn does not move", stage="navigation:agent")
             return Trajectory([], reasoning=f"call failed: {exc}")
 
     # ------------------------------------------------------------------ prompt
