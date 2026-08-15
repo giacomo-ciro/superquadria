@@ -1,57 +1,19 @@
-# Configuration for `python -m engine {generate,play,run,replay}`.
-# Only the command and `--offline` are CLI flags; everything else lives here.
-# Any key you omit surfaces as an OmegaConf error where it is read.
-
 defaults:
-  - agent: codex    # which CLI to drive — see configs/agent/{claude,codex}.yaml
+  - agent: codex    # claude | codex
   - _self_
 
-# Agent-agnostic knobs; the binary/model/effort come from the group above.
 agent:
-  timeout: 900.0        # seconds per agent call — a whole world is a long answer
+  timeout: 900.0        # seconds per agent call
   retries: 2            # retries per failed agent call
 
-world:
-  bounds: 60.0              # floor plate side; the building spans [-30, 30] on X and Z
-  grid_unit: 4.0            # layout grid cell; room sizes are whole multiples of this
-  level_height: 5.0         # floor-to-floor height of one storey (a 4.6-unit interior ceiling)
-  wall_thickness: 0.4       # thickness of every wall, floor and ceiling slab
-  door_width: 3.0           # doorway width — 2.5x the player across
-  door_height: 4.0          # doorway height, clamped to level_height - wall_thickness
-  player_radius: 0.6        # the player is a sphere, the camera sits at its centre
-  levels: 1                 # storeys the layout agent may use
-  max_rooms: 1              # rooms accepted from one layout call, before repair
-  mesh_resolution: 16       # latitude bands in a render mesh (longitude gets twice that)
-  collision_resolution: 8   # the coarser mesh collision and line of sight are measured against
-
 generation:
-  # Optional text directing the layout agent; ignored by --offline. Describes the whole
-  # building, not one room — each room's own furnishing brief comes from its own `style`.
-  brief: null
-  max_primitives: 36        # per-room furniture cap
-  furniture: 24             # target furniture count suggested to the room agent / offline fallback
-  decoys: 3                 # wrong-shaped objects sharing the room with the one true peg
-  match_tolerance:
-    scale: 0.05             # how close a carried object's scale must be to the lock's
-    exponents: 0.05         # how close its exponents must be to the lock's
-
-sensor:
-  # Unbounded: inside a sealed room, occlusion is the real limit and a distance
-  # cap never bound anything — measured identical to range 45 on every room
-  # world. You see everything in your field of view that a wall is not hiding.
-  range: .inf
-  fov: 60.0                 # horizontal field of view, degrees; also the render camera's
-  aspect: 1.6               # width / height, used for the vertical frustum bound
-  stride: 2.0               # distance flown between sensor passes; 4x fewer at move_increment 0.5
+  brief: null           # optional text prompt directing layout and room style
+  rooms: 1              # number of rooms to design and solve
+  levels: 1             # storeys the layout agent may use
 
 episode:
-  policy: agent             # agent (the CLI chosen above) | manual (WASD + mouse)
-  max_calls: 40             # maximum agent calls
-  max_waypoints: 8          # maximum target positions per call
-  max_segment: 15.0         # maximum distance per target position
-  max_distance: 600.0       # maximum total distance travelled
-  max_collisions: 20        # maximum collisions before the episode ends
-  move_increment: 0.5       # collision/observation granularity along a segment
-  manual_speed: 12.0        # units per second in manual flight
-  mouse_sensitivity: 40.0   # degrees per unit of mouse velocity
-  step_delay: 0.0           # extra seconds per executed increment
+  policy: agent         # agent (the CLI chosen above) | manual (WASD + mouse)
+  max_calls: 40         # maximum agent calls
+  max_distance: 600.0   # maximum total distance travelled
+  max_collisions: 20    # maximum collisions before the episode ends
+  step_delay: 0.0       # extra seconds per executed increment

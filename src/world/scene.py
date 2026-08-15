@@ -67,6 +67,55 @@ class Scene:
     player: Player
     meta: dict = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        self.anonymize_assemblies()
+
+    def anonymize_assemblies(self) -> None:
+        """Ensure all non-structural assemblies in the scene are anonymized to assembly-0, assembly-1, ..."""
+        structural_keywords = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+
+        # Normalize lock primitives to be part of the door assembly
+        for p in self.primitives:
+            if p.kind == LOCK or p.assembly.startswith("lock-"):
+                p.assembly = "door"
+                p.kind = LOCK
+
+        non_structural: set[str] = set()
+        for p in self.primitives:
+            low = p.assembly.lower().strip()
+            if not any(k in low for k in structural_keywords):
+                non_structural.add(p.assembly)
+
+        if self.player.carrying:
+            for p in self.player.carrying:
+                low = p.assembly.lower().strip()
+                if not any(k in low for k in structural_keywords):
+                    non_structural.add(p.assembly)
+
+        if not non_structural:
+            return
+
+        if all(name.startswith("assembly-") and name[9:].isdigit() for name in non_structural):
+            return
+
+        sorted_names = sorted(non_structural)
+        anon_map = {name: f"assembly-{idx}" for idx, name in enumerate(sorted_names)}
+
+        for p in self.primitives:
+            if p.assembly in anon_map:
+                p.assembly = anon_map[p.assembly]
+
+        if self.player.carrying:
+            for p in self.player.carrying:
+                if p.assembly in anon_map:
+                    p.assembly = anon_map[p.assembly]
+
+        for task in self.meta.get("task", {}).values():
+            if isinstance(task, dict) and "key_assembly" in task:
+                key_asm = task["key_assembly"]
+                if key_asm in anon_map:
+                    task["key_assembly"] = anon_map[key_asm]
+
     @property
     def half(self) -> float:
         return self.bounds / 2
@@ -92,35 +141,56 @@ class Scene:
         """Every primitive the player sphere is touching here, solid or not."""
         return self.primitives.touching(position, self.player.radius)
 
+    def _expand_assemblies(self, seen: list[Superquadric]) -> list[Superquadric]:
+        """When at least one object which makes an assembly is seen, the whole
+        assembly is visible. Assemblies are grouped and behave together."""
+        structural_keywords = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+        seen_assemblies: set[str] = set()
+        for p in seen:
+            if p.kind in (DOOR, PORTAL, LOCK):
+                continue
+            low = p.assembly.lower().strip()
+            if low and not any(k in low for k in structural_keywords):
+                seen_assemblies.add(p.assembly)
+
+        if not seen_assemblies:
+            return seen
+
+        seen_ids = {p.id for p in seen}
+        result = list(seen)
+        for p in self.primitives:
+            if p.id not in seen_ids and p.assembly in seen_assemblies:
+                if p.kind == LOCK or p.assembly.startswith("lock-"):
+                    continue
+                seen_ids.add(p.id)
+                result.append(p)
+        return result
+
     def visible(self, sensor: Sensor) -> list[Superquadric]:
         """Primitives the live sensor detects: in range and field of view, and
         in the player's current room.
 
-        `SuperquadricHandler.visible_from` genuinely raycasts for occlusion,
-        which is too expensive to call every frame — this uses the cheap
-        cone-only `visible_cone_from` instead and substitutes room membership
-        for real occlusion. A room's walls always separate it from the next,
-        so the agent still never sees through one; what it loses is occlusion
-        *within* a room, e.g. an object tucked behind a piece of furniture is
-        now visible as soon as it is in range and in view, where genuine
-        raycasting would have kept it hidden a little longer.
+        When at least one object which makes an assembly is seen, the whole
+        assembly is visible. Assemblies are grouped and behave together.
         """
         visible = self.primitives.visible_cone_from(self.player.position, self.player.forward, sensor)
         room = self._room_at(self.player.position)
         if room is None:
-            return [p for p in visible if p.kind != LOCK and not p.assembly.startswith("lock-")]
+            seen = [p for p in visible if p.kind != LOCK and not p.assembly.startswith("lock-")]
+            return self._expand_assemblies(seen)
         (x0, y0, z0), (x1, y1, z1) = room["box"]
         # Matches the tolerance `_find_walls_without_doors` uses for the same
         # box-membership test: a wall or doorway shared between two rooms sits
         # exactly on their common boundary, and rounding at save time can put
         # it a hair outside a bare inclusive test.
         margin = 0.2
-        return [p for p in visible if
+        seen = [p for p in visible if
                 p.kind != LOCK and
                 not p.assembly.startswith("lock-") and
                 x0 - margin <= p.position.x <= x1 + margin and
                 y0 - margin <= p.position.y <= y1 + margin and
                 z0 - margin <= p.position.z <= z1 + margin]
+        return self._expand_assemblies(seen)
 
     def describe_blocker(self, blocker: int | None) -> str:
         if blocker is None:
@@ -144,6 +214,12 @@ class Scene:
     def current_room_name(self, position: Vec3) -> str | None:
         room = self._room_at(position)
         return room["name"] if room else None
+
+    def current_room_description(self, position: Vec3) -> str | None:
+        room = self._room_at(position)
+        if not room:
+            return None
+        return room.get("style") or room.get("description") or None
 
     def current_room_index(self, position: Vec3) -> int | None:
         """Which room's task (`meta.task[str(index)]`) applies at this point —

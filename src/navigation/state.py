@@ -79,6 +79,7 @@ class State:
     rooms_cleared: int = 0
     failed_attempts: int = 0
     last_outcome: str = "start"
+    room_description: str | None = None
 
     @classmethod
     def observe(cls, scene: Scene, sensor: Sensor, *, calls: int = 0, distance: float = 0.0,
@@ -99,6 +100,7 @@ class State:
             rooms_cleared=rooms_cleared,
             failed_attempts=failed_attempts,
             last_outcome=last_outcome,
+            room_description=scene.current_room_description(scene.player.position),
         )
 
     def to_dict(self) -> dict:
@@ -108,6 +110,7 @@ class State:
             "bounds": self.bounds,
             "visible": [describe(p, self.player_position) for p in self.visible],
             "room": self.room,
+            "room_description": self.room_description,
             "lock": self.lock,
             "carrying": self.carrying,
             "calls": self.calls,

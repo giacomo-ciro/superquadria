@@ -15,8 +15,9 @@ from __future__ import annotations
 import textwrap
 import time
 from dataclasses import dataclass
+from typing import Any
 
-from geometry import ZERO, Vec3, basis, look_angles, look_vector
+from geometry import Vec3, basis, look_angles, look_vector
 from geometry.superquadrics import DOOR, LOCK, OBJECT, OBSTACLE, PORTAL, Sensor, Superquadric, build_mesh
 from navigation.state import State
 from world.scene import Scene
@@ -57,12 +58,12 @@ def _clock(seconds: float) -> str:
     return f"{hours}:{minutes:02d}:{secs:02d}" if hours else f"{minutes:02d}:{secs:02d}"
 
 
-def _wrap_text(text: str, width: int = 38, max_lines: int = 4) -> list[str]:
-    """Wrap text to fixed width and limit line count with ellipsis."""
+def _wrap_text(text: str, width: int = 38, max_lines: int | None = None) -> list[str]:
+    """Wrap text to fixed width and limit line count with ellipsis if max_lines is set."""
     if not text:
         return ["  (none)"]
     wrapped = textwrap.wrap(text.strip(), width=width)
-    if len(wrapped) > max_lines:
+    if max_lines is not None and len(wrapped) > max_lines:
         wrapped = wrapped[:max_lines]
         if len(wrapped[-1]) > width - 3:
             wrapped[-1] = wrapped[-1][:width - 3] + "..."
@@ -229,12 +230,13 @@ class UrsinaRenderer:
         from ursina import Entity, Mesh, Text, Ursina, camera, color, mouse, window
 
         self._camera = camera
-        self.app = Ursina(title="superquadric harness", size=size, vsync=True,
-                          development_mode=False, editor_ui_enabled=False, fullscreen=False,
-                          show_ursina_splash=False)
-        window.color = color.rgb(*BACKGROUND)
+        #: `Ursina` is a singleton proxy, so a checker sees none of `ShowBase`.
+        self.app: Any = Ursina(title="superquadric harness", size=size, vsync=True,
+                               development_mode=False, editor_ui_enabled=False, fullscreen=False,
+                               show_ursina_splash=False)
+        window.color = color.rgb(*BACKGROUND)  # pyright: ignore[reportCallIssue]
 
-        camera.fov = sensor.fov
+        camera.fov = sensor.fov  # pyright: ignore[reportAttributeAccessIssue]
         # Collision keeps every surface at least one player radius away, so a
         # near plane well inside that can never clip a wall the player is
         # legally allowed to be next to.
@@ -245,8 +247,10 @@ class UrsinaRenderer:
         #: rebuilt, and sensor visibility never toggles any of it: every shape
         #: renders, and the GPU handles culling and occlusion.
         self.mesh_resolution = mesh_resolution
-        self._matte_shader = _matte_shader()
-        self._unlit_shader = _unlit_shader()
+        #: `Any`, because Ursina annotates `Entity(shader=...)` as a class, not
+        #: an instance, and every entity below would otherwise be an error.
+        self._matte_shader: Any = _matte_shader()
+        self._unlit_shader: Any = _unlit_shader()
         self._entity_keys: dict[int, tuple] = {}
         self.entities = {}
         for prim in scene.primitives:
@@ -292,6 +296,7 @@ class UrsinaRenderer:
         self._input_entity = Entity(input=self._on_input)
 
         self.theme = str(scene.meta.get("theme", scene.meta.get("source", "world")))
+        self.theme_description = str(scene.meta.get("description") or scene.meta.get("layout", {}).get("description") or "")
         #: Whether first person flies by mouse — false for an agent episode and
         #: for replay, where the cursor stays free to click.
         self.mouse_look = mouse_look
@@ -322,15 +327,15 @@ class UrsinaRenderer:
 
         from geometry.agent_marks import MARKS_BY_POLICY
 
-        mark = MARKS_BY_POLICY.get(policy_name)
+        mark = MARKS_BY_POLICY.get(policy_name) if policy_name else None
         if mark is None:
-            self.agent = Entity(model="sphere", scale=scene.player.radius * 2, enabled=False,
+            self.agent = Entity(model="sphere", scale=scene.player.radius * 2, enabled=self.third_person,  # pyright: ignore[reportArgumentType]
                                 shader=self._unlit_shader, color=color.rgba(*AGENT_COLOR))
         else:
             self.agent = Entity(
                 model=Mesh(vertices=mark.vertices, triangles=mark.triangles,
                            normals=mark.normals, colors=[color.rgba(*c) for c in mark.colors]),
-                scale=scene.player.radius, enabled=False, shader=self._unlit_shader,
+                scale=scene.player.radius, enabled=self.third_person, shader=self._unlit_shader,  # pyright: ignore[reportArgumentType]
             )
         self.carried_entity = Entity(parent=self.agent, enabled=False, shader=self._matte_shader)
 
@@ -339,7 +344,7 @@ class UrsinaRenderer:
     def held(self, key: str) -> bool:
         from ursina import held_keys
 
-        return bool(held_keys[key])
+        return bool(held_keys[key])  # pyright: ignore[reportIndexIssue]
 
     # -------------------------------------------------------------------- draw
 
@@ -350,6 +355,7 @@ class UrsinaRenderer:
 
         if self.agent is None:
             self._build_agent(scene, info.get("policy"))
+        assert self.agent is not None and self.carried_entity is not None  # built just above
 
         self._last_player_position = scene.player.position
 
@@ -368,11 +374,22 @@ class UrsinaRenderer:
         # Sync primitive entities with scene state and agent memory.
         # In Agent Mind mode (default), only primitives the agent has seen are drawn.
         # In God Mode, all scene primitives are drawn.
+        # The lock is part of the door assembly and renders whenever the door renders.
         mem_prims = memory.primitives if (memory and self.agent_mind) else None
+        if mem_prims is not None:
+            mem_prims_set = set(mem_prims)
+            for task in scene.meta.get("task", {}).values():
+                door_id = task.get("door_id")
+                if door_id is not None and door_id in mem_prims_set:
+                    for lid in task.get("lock_ids", []):
+                        mem_prims_set.add(lid)
+        else:
+            mem_prims_set = None
+
         for prim_id, entity in self.entities.items():
             if prim_id not in scene.primitives:
                 entity.enabled = False
-            elif mem_prims is not None and prim_id not in mem_prims:
+            elif mem_prims_set is not None and prim_id not in mem_prims_set:
                 entity.enabled = False
             else:
                 prim = scene.primitives.get(prim_id)
@@ -470,7 +487,7 @@ class UrsinaRenderer:
     def _collect_input(self) -> None:
         from ursina import held_keys
 
-        pressed = {key for key, value in held_keys.items() if value}
+        pressed = {key for key, value in held_keys.items() if value}  # pyright: ignore[reportAttributeAccessIssue]
         self.pending_keys = pressed - self._pressed
         self._pressed = pressed
         if "escape" in self.pending_keys or "q" in self.pending_keys:
@@ -533,7 +550,8 @@ class UrsinaRenderer:
         parks manual flight, since the policy reads the same mouse and keys.
         """
         self.third_person = not self.third_person
-        self.agent.enabled = self.third_person
+        if self.agent is not None:
+            self.agent.enabled = self.third_person
         self.crosshair.enabled = not self.third_person
         self._mouse.locked = self.mouse_look and not self.third_person
         self.mouse_delta = (0.0, 0.0)
@@ -555,15 +573,23 @@ class UrsinaRenderer:
 
     def _hud_text(self, state: State, memory, info: dict) -> str:
         lines = [
-            f"THEME: {self.theme[:30]}",
-            f"ROOM:  {state.room or 'unknown'}",
+            f"THEME: {self.theme}",
+        ]
+        if self.theme_description:
+            lines.extend(_wrap_text(self.theme_description, width=38))
+        lines.append("")
+        lines.append(f"ROOM:  {state.room or 'unknown'}")
+        if state.room_description:
+            lines.extend(_wrap_text(state.room_description, width=38))
+
+        lines.extend([
             "",
             "SPATIAL POSE",
             f" pos:  [{state.player_position.x:+5.1f}, {state.player_position.y:+5.1f}, {state.player_position.z:+5.1f}]",
             f" look: [{state.forward.x:+5.2f}, {state.forward.y:+5.2f}, {state.forward.z:+5.2f}]",
             "",
             "PUZZLE TARGET (LOCK)",
-        ]
+        ])
         if state.lock and "concept" in state.lock:
             lines.append(f" find:  {state.lock['concept']}")
         elif state.lock and "scale" in state.lock:
@@ -583,8 +609,6 @@ class UrsinaRenderer:
             lines.append(f" parts: {parts} primitive(s)")
         else:
             lines.append(" item:  (none)")
-            lines.append(" scale: -")
-            lines.append(" exps:  -")
 
         lines.append("")
         lines.append("SENSOR & MEMORY")
@@ -725,11 +749,16 @@ class UrsinaRenderer:
 
     def _footer_text(self, info: dict) -> str:
         view_toggle = f"M {'god mode' if self.agent_mind else 'agent mode'}   "
+        speed = info.get("speed", 1.0)
+        speed_hint = f"+/- speed ({speed:.2f}x)"
         if self.third_person:
+            if info.get("phase") in ("idle", "replaying", "paused", "done"):
+                return (f"SPACE play/pause   {speed_hint}   R restart   "
+                        f"LEFT-drag rotate   SCROLL zoom   {view_toggle}TAB toggle HUD   V first person   ESC quit")
             return ("LEFT-drag rotate   RIGHT-drag pan   SCROLL zoom   "
                     f"{view_toggle}TAB toggle HUD   V first person   ESC quit")
         if info.get("phase") in ("idle", "replaying", "paused", "done"):
-            return f"SPACE play/pause   R restart   {view_toggle}TAB toggle HUD   V third person   ESC quit"
+            return f"SPACE play/pause   {speed_hint}   R restart   {view_toggle}TAB toggle HUD   V third person   ESC quit"
         if info.get("policy") == "manual":
             return ("WASD move   E interact   SPACE up   SHIFT down   "
                     f"{view_toggle}TAB toggle HUD   V third person   ESC quit")

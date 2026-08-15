@@ -76,13 +76,8 @@ def _make_agent(cfg: DictConfig, role: str, *, session_name: str | None = None,
     )
 
 
-def _sensor(config: DictConfig) -> Sensor:
-    s = config.sensor
-    return Sensor(range=s.range, fov=s.fov, aspect=s.aspect, stride=s.stride)
-
-
 def _generate(config: DictConfig, *, offline: bool) -> Scene:
-    world, gen = config.world, config.generation
+    gen = config.generation
     generator_agent = None if offline else _make_agent(config.agent, role="generator", window_name="layout")
     if generator_agent is not None:
         generator_agent.clean()
@@ -91,28 +86,13 @@ def _generate(config: DictConfig, *, offline: bool) -> Scene:
         room_agent_factory=None if offline else (
             lambda room, idx: _make_agent(config.agent, role="generator", window_name=f"room{idx}")
         ),
-        bounds=world.bounds,
-        grid_unit=world.grid_unit,
-        level_height=world.level_height,
-        wall_thickness=world.wall_thickness,
-        door_width=world.door_width,
-        door_height=world.door_height,
-        player_radius=world.player_radius,
-        move_increment=config.episode.move_increment,
-        collision_resolution=world.collision_resolution,
-        max_levels=world.levels,
-        max_rooms=world.max_rooms,
-        max_primitives=gen.max_primitives,
-        furniture=gen.furniture,
-        decoys=gen.decoys,
-        tol_scale=gen.match_tolerance.scale,
-        tol_exp=gen.match_tolerance.exponents,
-        sensor=_sensor(config),
+        max_levels=gen.get("levels", 1),
+        max_rooms=gen.get("rooms", 1),
     )
     started = time.monotonic()
     # `--offline` ignores the configured brief entirely: it directs agent
     # generation and there is no agent here to direct.
-    scene = generator.generate_offline() if offline else generator.generate(gen.brief)
+    scene = generator.generate_offline() if offline else generator.generate(gen.get("brief"))
     scene.meta["generation_s"] = round(time.monotonic() - started, 1)
     room0 = scene.meta["layout"]["rooms"][0]
     n_locks = len(scene.meta["task"])
@@ -125,15 +105,11 @@ def _generate(config: DictConfig, *, offline: bool) -> Scene:
 def _make_policy(config: DictConfig, renderer, scene: Scene, name: str) -> Policy:
     ep = config.episode
     if name == "manual":
-        return ManualPolicy(renderer, scene, speed=ep.manual_speed,
-                            sensitivity=ep.mouse_sensitivity)
+        return ManualPolicy(renderer, scene)
     if name == "agent":
         agent = _make_agent(config.agent, role="player")
         return WaypointNavigator(
             agent,
-            sensor_range=config.sensor.range,
-            max_waypoints=ep.max_waypoints,
-            max_segment=ep.max_segment,
             call_budget=ep.max_calls,
             distance_budget=ep.max_distance,
             collision_budget=ep.max_collisions,
@@ -148,9 +124,8 @@ def _play(config: DictConfig, scene: Scene, world: Path, out: Path, *, offline: 
     # `run --offline` means procedural generation followed by manual play, which
     # is what guarantees the whole command makes zero agent calls.
     policy_name = "manual" if offline else ep.policy
-    sensor = _sensor(config)
-    renderer = UrsinaRenderer(scene, sensor=sensor, mesh_resolution=config.world.mesh_resolution,
-                              mouse_look=policy_name == "manual")
+    sensor = Sensor()
+    renderer = UrsinaRenderer(scene, sensor=sensor, mouse_look=policy_name == "manual")
     try:
         policy = _make_policy(config, renderer, scene, policy_name)
 
@@ -159,15 +134,12 @@ def _play(config: DictConfig, scene: Scene, world: Path, out: Path, *, offline: 
         unlimited = policy.name == "manual"
         budgets = Budgets(
             max_calls=math.inf if unlimited else ep.max_calls,
-            max_waypoints=ep.max_waypoints,
-            max_segment=ep.max_segment,
             max_distance=math.inf if unlimited else ep.max_distance,
             max_collisions=math.inf if unlimited else ep.max_collisions,
-            move_increment=ep.move_increment,
         )
         initial_scene_data = scene.to_dict()
         result = Episode(scene, policy, sensor=sensor, budgets=budgets, renderer=renderer,
-                         step_delay=ep.step_delay).run()
+                         step_delay=ep.get("step_delay", 0.0)).run()
 
         extra = {
             "policy": policy.name,
@@ -186,13 +158,12 @@ def _play(config: DictConfig, scene: Scene, world: Path, out: Path, *, offline: 
         print(f"\n{result.summary()}")
         print(f"episode written to {out}")
 
-        print("[replay] window stays open — SPACE play/pause, R restart, close the window to quit")
+        print("[replay] window stays open — SPACE play/pause, +/- speed, R restart, close the window to quit")
         renderer.release_mouse()
-        replay_scene = Scene.from_dict(initial_scene_data,
-                                      collision_resolution=config.world.collision_resolution)
+        replay_scene = Scene.from_dict(initial_scene_data)
         Replay(replay_scene, renderer, result, policy.name, sensor=sensor,
                agent_model=getattr(agent, "model", None),
-               agent_effort=getattr(agent, "effort", None), step_delay=ep.step_delay,
+               agent_effort=getattr(agent, "effort", None), step_delay=ep.get("step_delay", 0.0),
                max_collisions=budgets.max_collisions).run()
         return 0 if result.solved else 1
     finally:
@@ -244,7 +215,7 @@ def _pick_world(config: DictConfig) -> tuple[Scene, Path] | None:
     for i, path in enumerate(worlds, 1):
         print(f"  {i:>2}. {path.name}")
     path = _prompt_choice(worlds, "play")
-    return Scene.load(path, collision_resolution=config.world.collision_resolution), path
+    return Scene.load(path), path
 
 
 def _replay(config: DictConfig) -> int:
@@ -266,15 +237,14 @@ def _replay(config: DictConfig) -> int:
             print(f"  {i:>2}. {path.name}")
     episode_path = _prompt_choice(episodes, "replay")
 
-    scene, result, policy_name, agent_model, agent_effort, max_collisions = load_episode(
-        episode_path, collision_resolution=config.world.collision_resolution)
-    sensor = _sensor(config)
-    renderer = UrsinaRenderer(scene, sensor=sensor, mesh_resolution=config.world.mesh_resolution)
+    scene, result, policy_name, agent_model, agent_effort, max_collisions = load_episode(episode_path)
+    sensor = Sensor()
+    renderer = UrsinaRenderer(scene, sensor=sensor)
     try:
         print(f"[replay] {episode_path}: {result.summary()}")
-        print("[replay] SPACE play/pause, R restart, close the window to quit")
+        print("[replay] SPACE play/pause, +/- speed, R restart, close the window to quit")
         Replay(scene, renderer, result, policy_name, sensor=sensor, agent_model=agent_model,
-               agent_effort=agent_effort, step_delay=ep.step_delay,
+               agent_effort=agent_effort, step_delay=ep.get("step_delay", 0.0),
                max_collisions=max_collisions).run()
     finally:
         renderer.close()

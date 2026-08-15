@@ -13,10 +13,9 @@ validated per primitive and, if the room's local flood cannot prove the door
 still reachable, discarded wholesale: a bare sealed shell is still a valid
 room, an unreachable door is not.
 
-The harness places the lock, the peg and every decoy — never the agent — for
-the same reason the harness has always placed the spawn and the key: a
-plausible-looking generation is otherwise perfectly capable of being
-unwinnable.
+The harness creates and locks each door along the path with an embossed
+replica of that room's key assembly: a plausible-looking generation is
+otherwise perfectly capable of being unwinnable.
 """
 
 from __future__ import annotations
@@ -94,32 +93,27 @@ LAYOUT_SCHEMA: dict = {
     "additionalProperties": False,
 }
 
+#: Two-stage room content: `objects` are modelled once each in their own local
+#: frame, `placements` instantiate them in the room. One object may be placed any
+#: number of times — that repetition is what buys richness without re-modelling.
 ROOM_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "notes": {"type": "array", "items": {"type": "string"}, "maxItems": 6},
-        "assemblies": {
+        "notes": {"type": "array", "items": {"type": "string"}, "maxItems": 6,
+                  "description": "Brief layout reasoning: what the room is for and where things stand."},
+        "objects": {
             "type": "array",
+            "description": "Object recipes, each modelled in its own local frame. Placed by the `placements` array.",
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {
+                    "id": {
                         "type": "string",
-                        "description": "Descriptive name for this assembly (e.g. 'carved_oak_chair', 'dining_table'). One assembly MUST match the room's key_concept.",
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {"type": "number"},
-                        "minItems": 3,
-                        "maxItems": 3,
-                        "description": "[px, py, pz] placement in room local coordinates (py=0 for floor placement).",
-                    },
-                    "yaw": {
-                        "type": "number",
-                        "description": "Horizontal rotation angle in degrees around the Y-axis (0-360).",
+                        "description": "Unique slug for this object, e.g. 'ladderback_chair'. Exactly one object's id must contain the room's key_concept.",
                     },
                     "primitives": {
                         "type": "array",
+                        "description": "The object's parts, in object-local coordinates: origin at the centre of its footprint, resting on Y=0, facing +Z.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -128,28 +122,28 @@ ROOM_SCHEMA: dict = {
                                     "items": {"type": "number"},
                                     "minItems": 3,
                                     "maxItems": 3,
-                                    "description": "[dx, dy, dz] relative offset from assembly base origin (0, 0, 0).",
+                                    "description": "[dx, dy, dz] centre of this part, in metres from the object origin.",
                                 },
                                 "rotation": {
                                     "type": "array",
                                     "items": {"type": "number"},
                                     "minItems": 3,
                                     "maxItems": 3,
-                                    "description": "[rx, ry, rz] local rotation in degrees (e.g. [90, 0, 0] for vertical cylinders).",
+                                    "description": "[rx, ry, rz] degrees about this part's own centre, applied X then Y then Z (e.g. [90, 0, 0] stands a cylinder upright).",
                                 },
                                 "scale": {
                                     "type": "array",
                                     "items": {"type": "number"},
                                     "minItems": 3,
                                     "maxItems": 3,
-                                    "description": "[sx, sy, sz] half-extents in meters (for vertical cylinders, [r, r, half_height]).",
+                                    "description": "[sx, sy, sz] half-extents in metres (a cylinder along local +Z is [r, r, half_length]).",
                                 },
                                 "exponents": {
                                     "type": "array",
                                     "items": {"type": "number"},
                                     "minItems": 2,
                                     "maxItems": 2,
-                                    "description": "[e1, e2] superquadric curvature exponents.",
+                                    "description": "[e1, e2] superquadric exponents: e2 shapes the XY cross-section, e1 the Z profile.",
                                 },
                                 "color": {
                                     "type": "array",
@@ -164,12 +158,45 @@ ROOM_SCHEMA: dict = {
                         },
                     },
                 },
-                "required": ["name", "position", "yaw", "primitives"],
+                "required": ["id", "primitives"],
+                "additionalProperties": False,
+            },
+        },
+        "placements": {
+            "type": "array",
+            "description": "One entry per instance standing in the room. Repeat an object id to place it again.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "object": {
+                        "type": "string",
+                        "description": "The `id` of the object being placed.",
+                    },
+                    "position": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "description": "[px, py, pz] where the object's local origin lands, in room-local coordinates (py=0.0 rests it on the floor).",
+                    },
+                    "rotation": {
+                        "type": "array",
+                        "items": {"type": "number"},
+                        "minItems": 3,
+                        "maxItems": 3,
+                        "description": "[rx, ry, rz] degrees applied to the whole object about its origin. Use [0, yaw, 0] for anything standing on the floor.",
+                    },
+                    "scale": {
+                        "type": "number",
+                        "description": "Uniform size multiplier for this instance (1.0 = as modelled).",
+                    },
+                },
+                "required": ["object", "position", "rotation", "scale"],
                 "additionalProperties": False,
             },
         },
     },
-    "required": ["notes", "assemblies"],
+    "required": ["notes", "objects", "placements"],
     "additionalProperties": False,
 }
 
@@ -214,15 +241,16 @@ def _matrix_to_euler_xyz(m: Matrix3) -> tuple[float, float, float]:
             round(math.degrees(rz) % 360.0, 2))
 
 
-def _parse_assembly_primitive(item: dict, assembly_name: str, asm_pos: Vec3, r_yaw: Matrix3,
+def _parse_assembly_primitive(item: dict, assembly_name: str, asm_pos: Vec3, r_asm: Matrix3,
                              origin: Vec3, index: int, interior,
-                             default_color: tuple[float, float, float] = (0.6, 0.55, 0.5)) -> Superquadric:
+                             default_color: tuple[float, float, float] = (0.6, 0.55, 0.5),
+                             scale_mult: float = 1.0) -> Superquadric:
     (x0, y0, z0), (x1, y1, z1) = interior
     max_scale = max(x1 - x0, y1 - y0, z1 - z0)
     offset_raw = item.get("offset", item.get("position", [0.0, 0.0, 0.0]))
-    offset_vec = Vec3.parse(offset_raw)
+    offset_vec = Vec3.parse(offset_raw) * scale_mult
     local_rot = tuple(float(a) % 360.0 for a in Vec3.parse(item.get("rotation", [0.0, 0.0, 0.0])).as_tuple())
-    scale = Vec3.parse(item["scale"]).as_tuple()
+    scale = tuple(a * scale_mult for a in Vec3.parse(item["scale"]).as_tuple())
     exponents = tuple(float(e) for e in item["exponents"])
     raw_color = item.get("color")
     if isinstance(raw_color, (list, tuple)) and len(raw_color) >= 3:
@@ -240,13 +268,13 @@ def _parse_assembly_primitive(item: dict, assembly_name: str, asm_pos: Vec3, r_y
     if any(not math.isfinite(e) or e <= 0 for e in exponents):
         raise ValueError(f"exponents {exponents} must be positive")
 
-    rot_offset = apply(r_yaw, offset_vec.as_tuple())
+    rot_offset = apply(r_asm, offset_vec.as_tuple())
     world_pos = Vec3(origin.x + asm_pos.x + rot_offset[0],
                      origin.y + asm_pos.y + rot_offset[1],
                      origin.z + asm_pos.z + rot_offset[2])
 
     r_prim = rotation_matrix(local_rot)
-    r_world = _matrix_multiply(r_yaw, r_prim)
+    r_world = _matrix_multiply(r_asm, r_prim)
     world_rot = _matrix_to_euler_xyz(r_world)
 
     return Superquadric(id=index, kind=OBSTACLE,
@@ -264,7 +292,60 @@ def _aabb_overlaps(lo1, hi1, lo2, hi2) -> bool:
     return all(lo1[a] < hi2[a] and lo2[a] < hi1[a] for a in range(3))
 
 
-def _procedural_assembly(concept: str, px: float, pz: float, y_floor: float, rng: random.Random) -> dict:
+def _instantiate(payload: dict, origin: Vec3, interior, room_name: str,
+                 log: PipelineLogger) -> list[Superquadric]:
+    """Turn one `objects` + `placements` payload into world-space primitives.
+
+    Objects are modelled once each in their own local frame; a placement stands
+    one of them in the room at `position`, rotated by `rotation` and resized by
+    the scalar `scale`. Uniform scale commutes with rotation, so it folds
+    exactly into each part's offset and half-extents — which is why the
+    placement scale is a scalar and not a vector: a per-axis scale applied
+    outside an arbitrary part rotation is a shear, and a superquadric has no
+    shear term to carry it.
+
+    Each placement gets its own `object_id#N` assembly label. Sharing one label
+    across instances would make `task.pick_at` gather every copy in the room
+    into a single carried object.
+    """
+    objects = {str(obj["id"]): obj.get("primitives") or []
+               for obj in payload.get("objects") or [] if obj.get("id")}
+    instantiated: list[Superquadric] = []
+    counts: dict[str, int] = {}
+
+    for idx, placement in enumerate(payload.get("placements") or []):
+        object_id = str(placement.get("object", ""))
+        primitives = objects.get(object_id)
+        if not primitives:
+            log.info("room", f"{room_name}: placement #{idx} names unknown object '{object_id}'")
+            continue
+        try:
+            asm_pos = Vec3.parse(placement.get("position", [0.0, 0.0, 0.0]))
+            asm_rot = tuple(float(a) % 360.0 for a in
+                            Vec3.parse(placement.get("rotation", [0.0, 0.0, 0.0])).as_tuple())
+            mult = float(placement.get("scale", 1.0))
+        except (ValueError, TypeError, IndexError) as exc:
+            log.info("room", f"{room_name}: rejected placement #{idx} '{object_id}' ({exc})")
+            continue
+        if not math.isfinite(mult) or mult <= 0:
+            log.info("room", f"{room_name}: rejected placement #{idx} '{object_id}' (scale {mult})")
+            continue
+
+        label = f"{object_id}#{counts.get(object_id, 0)}"
+        counts[object_id] = counts.get(object_id, 0) + 1
+        r_asm = rotation_matrix(asm_rot)
+        for part_idx, item in enumerate(primitives):
+            try:
+                instantiated.append(_parse_assembly_primitive(
+                    item, label, asm_pos, r_asm, origin, len(instantiated), interior,
+                    scale_mult=mult))
+            except (ValueError, KeyError, TypeError, IndexError) as exc:
+                log.info("room", f"{room_name}: rejected part #{part_idx} of '{label}' ({exc})")
+    return instantiated
+
+
+def _procedural_object(concept: str) -> dict:
+    """One offline object recipe, in the same local frame the agent models in."""
     prims = []
     c = concept.lower()
     if "guitar" in c:
@@ -338,52 +419,49 @@ def _procedural_assembly(concept: str, px: float, pz: float, y_floor: float, rng
                       "scale": [0.04, 0.04, 0.3], "exponents": [0.1, 1.0], "color": [0.60, 0.58, 0.52]})
         prims.append({"offset": [0.0, 0.75, 0.0], "rotation": [0.0, 0.0, 0.0],
                       "scale": [0.14, 0.14, 0.14], "exponents": [1.0, 1.0], "color": [0.75, 0.50, 0.30]})
-    return {"name": concept, "position": [px, y_floor, pz], "yaw": 0.0, "primitives": prims}
+    return {"id": concept, "primitives": prims}
 
 
-def _procedural_room(rng: random.Random, interior, target: int, key_concept: str = "key") -> list[dict]:
+#: Offline stand-ins, in the same shape the agent returns.
+_PROCEDURAL_FURNITURE: dict[str, list[dict]] = {
+    "dining_table": [
+        {"offset": [0.0, 0.73, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.6, 0.03, 0.4], "exponents": [0.1, 0.1], "color": [0.60, 0.42, 0.28]},
+        {"offset": [-0.5, 0.35, -0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
+        {"offset": [0.5, 0.35, -0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
+        {"offset": [-0.5, 0.35, 0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
+        {"offset": [0.5, 0.35, 0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
+    ],
+    "floor_lamp": [
+        {"offset": [0.0, 0.02, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.18, 0.18, 0.02], "exponents": [0.1, 1.0], "color": [0.30, 0.30, 0.32]},
+        {"offset": [0.0, 0.6, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.55], "exponents": [0.1, 1.0], "color": [0.65, 0.60, 0.40]},
+        {"offset": [0.0, 1.25, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.2, 0.2, 0.12], "exponents": [0.4, 1.0], "color": [0.92, 0.88, 0.70]},
+    ],
+}
+
+
+def _procedural_room(rng: random.Random, interior, key_concept: str = "key") -> dict:
+    """An offline `objects` + `placements` payload, parsed by the same code path."""
     (x0, y0, z0), (x1, y1, z1) = interior
     half_x, half_z = (x1 - x0) / 2, (z1 - z0) / 2
-    assemblies = []
 
-    # 1. Key object assembly
     kpx = rng.uniform(-half_x * 0.6, half_x * 0.6)
     kpz = rng.uniform(-half_z * 0.6, half_z * 0.6)
-    assemblies.append(_procedural_assembly(key_concept, kpx, kpz, 0.0, rng))
+    objects = [_procedural_object(key_concept)]
+    placements = [{"object": key_concept, "position": [kpx, 0.0, kpz],
+                   "rotation": [0.0, 0.0, 0.0], "scale": 1.0}]
 
-    # 2. Standard furniture assemblies (table, lamp)
-    furniture_types = [
-        ("dining_table", lambda px, pz: {
-            "name": "dining_table",
-            "position": [px, 0.0, pz],
-            "yaw": 0.0,
-            "primitives": [
-                {"offset": [0.0, 0.73, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [0.6, 0.03, 0.4], "exponents": [0.1, 0.1], "color": [0.60, 0.42, 0.28]},
-                {"offset": [-0.5, 0.35, -0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
-                {"offset": [0.5, 0.35, -0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
-                {"offset": [-0.5, 0.35, 0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
-                {"offset": [0.5, 0.35, 0.3], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.35], "exponents": [0.1, 1.0], "color": [0.32, 0.25, 0.20]},
-            ],
-        }),
-        ("floor_lamp", lambda px, pz: {
-            "name": "floor_lamp",
-            "position": [px, 0.0, pz],
-            "yaw": 0.0,
-            "primitives": [
-                {"offset": [0.0, 0.02, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.18, 0.18, 0.02], "exponents": [0.1, 1.0], "color": [0.30, 0.30, 0.32]},
-                {"offset": [0.0, 0.6, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.03, 0.03, 0.55], "exponents": [0.1, 1.0], "color": [0.65, 0.60, 0.40]},
-                {"offset": [0.0, 1.25, 0.0], "rotation": [90.0, 0.0, 0.0], "scale": [0.2, 0.2, 0.12], "exponents": [0.4, 1.0], "color": [0.92, 0.88, 0.70]},
-            ],
-        }),
-    ]
-    for name, gen_fn in furniture_types:
-        if name.lower() not in key_concept.lower() and key_concept.lower() not in name.lower():
-            fpx = rng.uniform(-half_x * 0.6, half_x * 0.6)
-            fpz = rng.uniform(-half_z * 0.6, half_z * 0.6)
-            if math.hypot(fpx - kpx, fpz - kpz) > 1.5:
-                assemblies.append(gen_fn(fpx, fpz))
+    for name, prims in _PROCEDURAL_FURNITURE.items():
+        if name.lower() in key_concept.lower() or key_concept.lower() in name.lower():
+            continue
+        fpx = rng.uniform(-half_x * 0.6, half_x * 0.6)
+        fpz = rng.uniform(-half_z * 0.6, half_z * 0.6)
+        if math.hypot(fpx - kpx, fpz - kpz) <= 1.5:
+            continue
+        objects.append({"id": name, "primitives": prims})
+        placements.append({"object": name, "position": [fpx, 0.0, fpz],
+                           "rotation": [0.0, 0.0, 0.0], "scale": 1.0})
 
-    return assemblies
+    return {"notes": [], "objects": objects, "placements": placements}
 
 
 def _room_reachable(furniture: list[Superquadric], room: Room, doors: list[Door], cfg: WorldConfig, *,
@@ -438,8 +516,7 @@ def _room_reachable(furniture: list[Superquadric], room: Room, doors: list[Door]
 
 
 def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: WorldConfig, rng: random.Random,
-                  *, max_primitives: int, furniture_target: int, brief: str | None,
-                  collision_resolution: int, move_increment: float,
+                  *, brief: str | None, collision_resolution: int, move_increment: float,
                   log: PipelineLogger) -> tuple[list[Superquadric], str]:
     """Furnish one room. A pure function of its inputs: same room, doors and
     agent response in, same validated primitives (or an empty list) out — which
@@ -452,66 +529,27 @@ def generate_room(agent: Agent | None, room: Room, doors: list[Door], cfg: World
 
     if agent is not None:
         try:
-            payload = agent.run(room_prompt(room, doors, cfg, interior, origin,
-                                            max_primitives=max_primitives,
-                                            furniture_target=furniture_target, brief=brief),
+            payload = agent.run(room_prompt(room, doors, cfg, interior, origin, brief=brief),
                                 ROOM_SCHEMA)
-            raw = payload.get("assemblies") or payload.get("primitives") or []
             source = "agent"
         except (AgentError, ValueError, KeyError, TypeError) as exc:
             log.info("room", f"{room.name}: room generation fell back to procedural: {exc}")
-            raw = _procedural_room(rng, interior, furniture_target, key_concept=room.key_concept)
+            payload = _procedural_room(rng, interior, key_concept=room.key_concept)
             source = f"fallback:{type(exc).__name__}"
     else:
-        raw = _procedural_room(rng, interior, furniture_target, key_concept=room.key_concept)
+        payload = _procedural_room(rng, interior, key_concept=room.key_concept)
         source = "procedural"
 
     clearances = [shell_module.door_clearance(door, cfg) for door in doors]
     validated: list[Superquadric] = []
 
-    # Flatten hierarchical assemblies if needed
-    flat_items: list[dict] = []
-    if raw and isinstance(raw[0], dict) and "primitives" in raw[0]:
-        for asm in raw:
-            asm_name = str(asm.get("name", "furniture"))[:32].strip() or "furniture"
-            asm_pos = Vec3.parse(asm.get("position", [0.0, 0.0, 0.0]))
-            asm_yaw = float(asm.get("yaw", 0.0)) % 360.0
-            r_yaw = rotation_matrix((0.0, asm_yaw, 0.0))
-            for p_item in asm.get("primitives", []):
-                flat_items.append({
-                    "assembly": asm_name,
-                    "item": p_item,
-                    "asm_pos": asm_pos,
-                    "r_yaw": r_yaw,
-                })
-    else:
-        for p_item in raw:
-            flat_items.append({
-                "assembly": str(p_item.get("assembly", "furniture"))[:32].strip() or "furniture",
-                "item": p_item,
-                "asm_pos": ZERO,
-                "r_yaw": rotation_matrix((0.0, 0.0, 0.0)),
-            })
-
-    if len(flat_items) > max_primitives:
-        log.info("room", f"{room.name}: truncated {len(flat_items) - max_primitives} primitive(s) exceeding limit of {max_primitives}")
-
-    for item_idx, entry in enumerate(flat_items[:max_primitives]):
-        asm_name = entry["assembly"]
-        p_item = entry["item"]
-        asm_pos = entry["asm_pos"]
-        r_yaw = entry["r_yaw"]
-        try:
-            prim = _parse_assembly_primitive(p_item, asm_name, asm_pos, r_yaw, origin, len(validated), interior)
-        except (ValueError, KeyError, TypeError, IndexError) as exc:
-            log.info("room", f"{room.name}: rejected primitive #{item_idx} '{asm_name}' (parse error: {exc})")
-            continue
+    for prim in _instantiate(payload, origin, interior, room.name, log):
         lo, hi = prim.aabb()
         if not _aabb_inside(lo, hi, interior):
-            log.info("room", f"{room.name}: rejected primitive #{item_idx} '{prim.assembly}' (outside room interior bounds)")
+            log.info("room", f"{room.name}: rejected part of '{prim.assembly}' (outside room interior bounds)")
             continue
         if any(_aabb_overlaps(lo, hi, *clearance) for clearance in clearances):
-            log.info("room", f"{room.name}: rejected primitive #{item_idx} '{prim.assembly}' (overlaps door clearance)")
+            log.info("room", f"{room.name}: rejected part of '{prim.assembly}' (overlaps door clearance)")
             continue
         validated.append(prim)
 
@@ -541,11 +579,8 @@ class WorldGenerator:
     player_radius: float = 0.6
     move_increment: float = 0.5
     collision_resolution: int = 8
-    max_levels: int = 2
-    max_rooms: int = 24
-    max_primitives: int = 36
-    furniture: int = 24
-    decoys: int = 3
+    max_levels: int = 1
+    max_rooms: int = 1
     tol_scale: float = 0.05
     tol_exp: float = 0.05
     sensor: Sensor = field(default_factory=Sensor)
@@ -660,8 +695,7 @@ class WorldGenerator:
         def _furnish_task(room_agent: Agent | None, room: Room, doors: list[Door],
                           rng: random.Random) -> tuple[Room, list[Superquadric], str]:
             prims, r_source = generate_room(
-                room_agent, room, doors, self.cfg, rng,
-                max_primitives=self.max_primitives, furniture_target=self.furniture, brief=brief,
+                room_agent, room, doors, self.cfg, rng, brief=brief,
                 collision_resolution=self.collision_resolution, move_increment=self.move_increment,
                 log=self.log)
             return room, prims, r_source
@@ -701,14 +735,14 @@ class WorldGenerator:
             # If no assemblies were generated at all, generate procedural key assembly
             if not assemblies:
                 interior = room.interior(self.cfg)
-                raw_key = _procedural_assembly(room.key_concept, 0.0, 0.0, 0.0, self._rng)
                 (x0, y0, z0), (x1, y1, z1) = interior
                 origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
-                asm_name = str(raw_key.get("name", room.key_concept))
-                asm_pos = Vec3.parse(raw_key.get("position", [0.0, 0.0, 0.0]))
-                r_yaw = rotation_matrix((0.0, float(raw_key.get("yaw", 0.0)), 0.0))
-                for item in raw_key.get("primitives", []):
-                    p = _parse_assembly_primitive(item, asm_name, asm_pos, r_yaw, origin, len(room_furniture), interior)
+                key_payload = {
+                    "objects": [_procedural_object(room.key_concept)],
+                    "placements": [{"object": room.key_concept, "position": [0.0, 0.0, 0.0],
+                                    "rotation": [0.0, 0.0, 0.0], "scale": 1.0}],
+                }
+                for p in _instantiate(key_payload, origin, interior, room.name, self.log):
                     room_furniture.append(p)
                     assemblies.setdefault(p.assembly, []).append(p)
 

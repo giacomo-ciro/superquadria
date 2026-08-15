@@ -72,7 +72,7 @@ class ManualPolicy(Policy):
     name = "manual"
     main_thread_only = True
 
-    def __init__(self, renderer, scene, *, speed: float = 8.0, sensitivity: float = 40.0):
+    def __init__(self, renderer, scene, *, speed: float = 12.0, sensitivity: float = 40.0):
         self.renderer = renderer
         self.scene = scene
         self.speed = speed

@@ -11,6 +11,8 @@ is not allowed to have.
 
 from __future__ import annotations
 
+import math
+
 from agents.base import Agent, AgentError
 from engine.pipeline_log import PipelineLogger
 
@@ -26,7 +28,7 @@ class WaypointNavigator(Policy):
 
     name = "agent"
 
-    def __init__(self, agent: Agent, *, sensor_range: float, max_waypoints: int = MAX_WAYPOINTS,
+    def __init__(self, agent: Agent, *, sensor_range: float = math.inf, max_waypoints: int = MAX_WAYPOINTS,
                  max_segment: float = 15.0, call_budget: int | None = None,
                  distance_budget: float | None = None, collision_budget: int | None = None,
                  log: PipelineLogger | None = None):

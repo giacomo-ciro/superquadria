@@ -38,6 +38,7 @@ class SpatialMemory:
     room_poses: set[tuple] = field(default_factory=set)
     #: Bumped whenever something new is learned, so the renderer can cache.
     revision: int = field(default=0, init=False)
+    _anon_map: dict[str, str] = field(default_factory=dict, init=False)
 
     # ------------------------------------------------------------------ update
 
@@ -47,6 +48,7 @@ class SpatialMemory:
         self.poses.clear()
         self.room_primitives.clear()
         self.room_poses.clear()
+        self._anon_map.clear()
         self.revision += 1
 
     def forget_assembly(self, assembly: str) -> None:
@@ -127,25 +129,51 @@ class SpatialMemory:
             counts[prim.assembly] = counts.get(prim.assembly, 0) + 1
         return counts
 
-    # --------------------------------------------------------------- rendering
+    def anonymize_assembly(self, assembly: str) -> str:
+        """Helper to ensure an assembly label is structural (e.g. wall/door) or anonymized (assembly-N)."""
+        cleaned = " ".join(assembly.split())
+        low = cleaned.lower()
+        for kw in ("wall", "floor", "ceiling", "door", "frame", "portal"):
+            if kw in low:
+                return kw
+        if low.startswith("assembly-") and low[9:].isdigit():
+            return cleaned
+        if not hasattr(self, "_anon_map"):
+            self._anon_map = {}
+        if cleaned not in self._anon_map:
+            self._anon_map[cleaned] = f"assembly-{len(self._anon_map)}"
+        return self._anon_map[cleaned]
 
     def table(self, viewer: Vec3, primitives: list[Superquadric], *, limit: int = 40) -> str:
         """The primitive parameters as a fixed-width table for the prompt.
 
-        Nearest first and capped: a distant primitive the agent already flew past
-        is worth less prompt than the one it is about to hit.
+        Grouped by assembly and ordered nearest assembly first.
         """
         valid = [p for p in primitives if p.kind != LOCK and not p.assembly.startswith("lock-")]
         if not valid:
             return "  (none)"
-        rows = [("  id  assembly    centre               dist  size             exps")]
-        ordered = sorted(valid, key=lambda p: (p.position - viewer).length())
+        rows = [("  id  assembly      centre               dist  size             exps")]
+
+        # Group primitives by (anonymized) assembly
+        groups: dict[str, list[Superquadric]] = {}
+        for p in valid:
+            asm_key = self.anonymize_assembly(p.assembly)
+            groups.setdefault(asm_key, []).append(p)
+
+        # Sort each group internally by distance to viewer (and id as tiebreaker)
+        for asm_prims in groups.values():
+            asm_prims.sort(key=lambda p: ((p.position - viewer).length(), p.id))
+
+        # Order groups by the closest primitive in each assembly
+        ordered_groups = sorted(groups.values(), key=lambda prims: (prims[0].position - viewer).length())
+        ordered = [p for prims in ordered_groups for p in prims]
+
         for prim in ordered[:limit]:
             item = describe(prim, viewer)
             centre = "(%s)" % ", ".join(f"{v:g}" for v in item["position"])
             size = "(%s)" % ", ".join(f"{v:g}" for v in item["scale"])
-            assembly_str = " ".join(prim.assembly.split())[:10]
-            rows.append(f"  {prim.id:>2}  {assembly_str:<10}  "
+            assembly_str = self.anonymize_assembly(item["assembly"])[:12]
+            rows.append(f"  {prim.id:>2}  {assembly_str:<12}  "
                         f"{centre:<19} {item['distance']:>5}  {size:<15} "
                         f"({item['exponents'][0]:g}, {item['exponents'][1]:g})")
         if len(ordered) > limit:

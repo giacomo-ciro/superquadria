@@ -585,8 +585,8 @@ def _extract_events(trajectory: list[dict]) -> list[tuple[int, dict]]:
 
 class Replay:
     """Re-watch a recorded episode: SPACE plays/pauses (and restarts from the
-    beginning once playback has run to the end), R restarts from the beginning,
-    closing the window quits.
+    beginning once playback has run to the end), +/- changes speed (0.25x to 4x),
+    R restarts from the beginning, closing the window quits.
 
     Consumes only the saved world and episode JSON — it never calls an agent.
     """
@@ -604,6 +604,7 @@ class Replay:
         self.agent_model = agent_model
         self.agent_effort = agent_effort
         self.step_delay = step_delay if step_delay > 0 else 0.02
+        self.speed = 1.0
         if max_collisions is None:
             self.max_collisions = math.inf if policy_name == "manual" else Budgets.max_collisions
         else:
@@ -638,32 +639,50 @@ class Replay:
         playing = False
         index = 0
         phase = "idle"
+        last_time = time.monotonic()
+        step_acc = 0.0
 
         while True:
             if not self._draw(index, phase):
                 return
-            if self.poses and "r" in self.renderer.pending_keys:
+            now = time.monotonic()
+            dt = min(0.1, now - last_time)
+            last_time = now
+
+            if self.poses and ("r" in self.renderer.pending_keys or "R" in self.renderer.pending_keys):
                 self._seek(0)
                 index = 0
                 playing = False
                 phase = "idle"
+                step_acc = 0.0
             if self.poses and "space" in self.renderer.pending_keys:
                 if index >= len(self.poses):  # at the end: space restarts
                     self._seek(0)
                     index = 0
                 playing = not playing
+                step_acc = 0.0
+            if any(k in self.renderer.pending_keys for k in ("+", "=", "plus", "numpad_+", "numpad +", "add")):
+                self.speed = min(4.0, round(self.speed + 0.25, 2))
+            elif any(k in self.renderer.pending_keys for k in ("-", "_", "minus", "numpad_-", "numpad -", "subtract")):
+                self.speed = max(0.25, round(self.speed - 0.25, 2))
 
             if playing and index < len(self.poses):
-                self._step_forward()
-                index += 1
+                step_acc += dt * (self.speed / self.step_delay)
+                steps_to_take = int(step_acc)
+                if steps_to_take > 0:
+                    steps_to_take = min(steps_to_take, len(self.poses) - index)
+                    self._step_forward(steps_to_take)
+                    index += steps_to_take
+                    step_acc -= steps_to_take
+
                 done = index >= len(self.poses)
                 phase = "done" if done else "replaying"
                 if done:
                     playing = False
-                elif self.step_delay:
-                    time.sleep(self.step_delay)
+                    step_acc = 0.0
             else:
                 playing = False
+                step_acc = 0.0
                 if self.poses and 0 < index < len(self.poses):
                     phase = "paused"
                 elif index == 0:
@@ -690,8 +709,8 @@ class Replay:
 
         self.memory.integrate(self._state())
 
-    def _step_forward(self) -> None:
-        """Advance exactly one recorded pose during playback.
+    def _step_forward(self, count: int = 1) -> None:
+        """Advance recorded poses during playback.
 
         `_seek` rebuilds `Scene`/`SuperquadricHandler` from the saved JSON so it
         is correct from any starting point (restart, scrubbing) — but that also
@@ -701,15 +720,16 @@ class Replay:
         once-per-episode cost a live run pays. Stepping the existing scene
         forward in place keeps those caches warm.
         """
-        prev_index = self._current_index
-        self._current_index = min(self._current_index + 1, len(self.poses))
-        point, forward = self.poses[self._current_index - 1]
-        self.scene.player.position = point
-        self.scene.player.forward = forward
+        for _ in range(count):
+            prev_index = self._current_index
+            self._current_index = min(self._current_index + 1, len(self.poses))
+            point, forward = self.poses[self._current_index - 1]
+            self.scene.player.position = point
+            self.scene.player.forward = forward
 
-        for g_pose, ev in self.events:
-            if prev_index < g_pose <= self._current_index:
-                self._apply_event(ev)
+            for g_pose, ev in self.events:
+                if prev_index < g_pose <= self._current_index:
+                    self._apply_event(ev)
 
         self.memory.integrate(self._state())
 
@@ -801,6 +821,7 @@ class Replay:
             "max_distance": self.result.distance, "policy": self.policy_name,
             "agent_model": self.agent_model, "agent_effort": self.agent_effort,
             "replay": f"{index}/{len(self.poses)}",
+            "speed": self.speed,
             "history": self.history[:bisect_right(self.call_ends, index)],
             "active_turn": active_turn,
             "match_tolerance": self.scene.meta.get("match_tolerance", {}),

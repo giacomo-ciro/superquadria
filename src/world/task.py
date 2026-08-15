@@ -7,23 +7,14 @@ The agent explores the room, inspects the anonymized assemblies, picks up the ma
 assembly, carries it to the door, and unlocks it.
 """
 
-from __future__ import annotations
-
-import math
-import random
-from collections import namedtuple
-
 from geometry import Vec3
-from geometry.superquadrics import DOOR, LOCK, OBJECT, OBSTACLE, PORTAL, Sensor, Superquadric, SuperquadricHandler
+from geometry.superquadrics import DOOR, LOCK, OBJECT, PORTAL, Superquadric, SuperquadricHandler
 from .layout import IN_PLANE, Door, Room, WorldConfig
 from .scene import Scene
-from .shell import door_clearance
 
 LOCK_COLOR = (1.00, 0.85, 0.10)
 DEFAULT_REACH = 2.5
 STRUCTURAL_ASSEMBLIES = {"wall", "floor", "ceiling", "door", "frame"}
-
-_Shape = namedtuple("_Shape", "scale exponents")
 
 
 def matches(obj, lock, tol_scale: float = 0.05, tol_exp: float = 0.05) -> bool:
@@ -86,7 +77,7 @@ def build_lock(door: Door, room: Room, key_prims: list[Superquadric],
         lock_prim = Superquadric(
             id=handler.next_id(),
             kind=LOCK,
-            assembly=f"lock-{room.key_concept}",
+            assembly="door",
             position=new_pos,
             rotation=prim.rotation,
             scale=scaled_size,

@@ -86,8 +86,8 @@ HOW THE TASK WORKS:
 - You can pick up any furniture/prop assembly in the room. If you realize you picked the wrong object before reaching the door, you can drop it on the floor anywhere.
 
 YOUR SENSOR {reach}, only within your field of view, and only to
-shapes nothing else is hiding in your current room. Once any part of a shape is detected
-you receive its complete parameters and remember them while in this room.
+shapes nothing else is hiding in your current room. Once any part of an assembly is detected
+you receive all its shapes and remember them while in this room.
 
 VISIBLE NOW ({len(state.visible)} shapes):
 {memory.table(state.player_position, state.visible)}

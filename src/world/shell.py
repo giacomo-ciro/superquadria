@@ -85,7 +85,7 @@ def build_shell(layout: Layout, cfg: WorldConfig) -> tuple[list[Superquadric], i
     doorway on the task path.
 
     Every room the path passes through gates its own way forward: `task.py`
-    places that room's peg and decoys and locks this slab, so the agent must
+    places that room's key lock and locks this slab, so the agent must
     solve room *n* before it can ever reach room *n+1*.
 
     Mutates each `Door` in `layout.doors` with the primitive id of its slab.
@@ -155,7 +155,7 @@ def build_shell(layout: Layout, cfg: WorldConfig) -> tuple[list[Superquadric], i
 
 def door_clearance(door: Door, cfg: WorldConfig) -> tuple[Triple, Triple]:
     """The door rectangle extruded by `wall_thickness/2 + 2*player_radius` on
-    both sides. Nothing generated — furniture, peg or decoy — may intrude on it.
+    both sides. Nothing generated may intrude on it.
 
     Tested against a primitive's AABB, not its centre: testing the centre alone
     lets a wide piece of furniture straddle the doorway with its middle outside

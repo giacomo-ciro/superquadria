@@ -41,8 +41,8 @@ The harness is launched via `python -m engine` and reads `configs/3d.yaml`.
 Rules:
 - **The agent sees parameters, not pixels.** This is a deliberate departure from
   TASK.md's vision-policy context — document it, don't quietly present it as
-  equivalent. Once any part of a primitive is detected the agent receives the whole
-  primitive.
+  equivalent. Once any part of an assembly is detected the agent receives the whole
+  assembly (all its primitives).
 - **`SpatialMemory` holds only primitives a sensor query actually returned.** Never
   the handler, never the generation-time voxel graph.
 - **The handler is authoritative, Ursina is not.** Collision, success and visibility

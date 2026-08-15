@@ -12,23 +12,5 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
-# Environment / secrets
-.env
-.env.*
-
 # OS
 .DS_Store
-
-# Editors
-.vscode/
-.idea/
-
-# Logs / runtime artifacts
-*.log
-episodes_3d/
-archive/episodes_2d/
-# worlds_3d/
-frames/
-
-# Calibration rig output
-shots/

@@ -27,9 +27,18 @@ from .geometry import Matrix3, Vec3, apply, apply_inverse, basis, rotation_matri
 #: a door, object, lock or portal; the generation agents can only make obstacles.
 OBSTACLE = "obstacle"   # solid, blocks
 DOOR = "door"           # solid, unlock attempt on touch
-OBJECT = "object"       # not solid, picked up on touch (peg or decoy — indistinguishable)
+OBJECT = "object"       # not solid, pickable object primitive
 LOCK = "lock"           # not solid, display only — the target parameters
 PORTAL = "portal"       # not solid, display only — what an unlocked door becomes
+
+STRUCTURAL_KEYWORDS = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+
+
+def _is_structural(prim: Superquadric) -> bool:
+    if prim.kind in (DOOR, PORTAL, LOCK):
+        return True
+    low = prim.assembly.lower().strip()
+    return not low or any(k in low for k in STRUCTURAL_KEYWORDS)
 
 Triple = tuple[float, float, float]
 
@@ -377,8 +386,8 @@ def _aabb_overlaps_point(lo: Triple, hi: Triple, p: Triple) -> bool:
 class Sensor:
     """What the parameter sensor can reach, and how often it is polled."""
 
-    range: float = 45.0
-    fov: float = 70.0
+    range: float = math.inf
+    fov: float = 60.0
     aspect: float = 1.6
     #: Distance flown between sensor passes along a segment. A pass dominates the
     #: cost of a movement increment, and one every 0.5 units re-detects the same
@@ -525,12 +534,33 @@ class SuperquadricHandler:
 
     # ------------------------------------------------------------- visibility
 
+    def _expand_assemblies(self, seen: list[Superquadric]) -> list[Superquadric]:
+        """When at least one object which makes an assembly is seen, the whole
+        assembly is visible. Assemblies are grouped and behave together."""
+        seen_assemblies: set[str] = set()
+        for p in seen:
+            if not _is_structural(p) and p.assembly:
+                seen_assemblies.add(p.assembly)
+
+        if not seen_assemblies:
+            return seen
+
+        seen_ids = {p.id for p in seen}
+        result = list(seen)
+        for p in self._primitives.values():
+            if p.id not in seen_ids and p.assembly in seen_assemblies:
+                if p.kind == LOCK or p.assembly.startswith("lock-"):
+                    continue
+                seen_ids.add(p.id)
+                result.append(p)
+        return result
+
     def visible_from(self, position: Vec3, forward: Vec3, sensor: Sensor) -> list[Superquadric]:
         """Primitives the parameter sensor detects from this pose.
 
         Range, then camera frustum, then sampled line of sight against the
-        collision meshes. Once any part of a primitive is detected the caller
-        gets the *whole* validated primitive — that information advantage over a
+        collision meshes. Once any part of an assembly is detected the caller
+        gets the *whole* assembly — that information advantage over a
         pixel policy is the point of the abstraction, not an accident of it.
 
         This is the genuine-occlusion check and it is expensive (a raycast per
@@ -542,10 +572,14 @@ class SuperquadricHandler:
         """
         eye = position.as_tuple()
         candidates = self._cone_candidates(position, forward, sensor)
-        return [prim for _, prim in candidates if self._has_line_of_sight(eye, prim)]
+        seen = [prim for _, prim in candidates if self._has_line_of_sight(eye, prim)]
+        return self._expand_assemblies(seen)
 
     def visible_cone_from(self, position: Vec3, forward: Vec3, sensor: Sensor) -> list[Superquadric]:
         """Primitives in sensor range and field of view, ignoring occlusion.
+
+        When at least one object which makes an assembly is seen, the whole
+        assembly is visible.
 
         No raycasting, so it is cheap enough for a live sensor called every
         frame — but on its own it sees straight through walls. It is safe for
@@ -554,7 +588,8 @@ class SuperquadricHandler:
         the agent from seeing into the next room; it is not a substitute for
         `visible_from`'s genuine occlusion test at world-generation time.
         """
-        return [prim for _, prim in self._cone_candidates(position, forward, sensor)]
+        seen = [prim for _, prim in self._cone_candidates(position, forward, sensor)]
+        return self._expand_assemblies(seen)
 
     def _cone_candidates(self, position: Vec3, forward: Vec3,
                          sensor: Sensor) -> list[tuple[float, Superquadric]]:

@@ -57,15 +57,15 @@ FALLBACK_ROOMS_PER_LEVEL = 6
 class WorldConfig:
     """Every geometric knob `layout.py`, `shell.py` and `task.py` share."""
 
-    bounds: float
-    grid_unit: float
-    level_height: float
-    wall_thickness: float
-    door_width: float
-    door_height: float
-    player_radius: float
-    max_levels: int
-    max_rooms: int
+    bounds: float = 60.0
+    grid_unit: float = 4.0
+    level_height: float = 5.0
+    wall_thickness: float = 0.4
+    door_width: float = 3.0
+    door_height: float = 4.0
+    player_radius: float = 0.6
+    max_levels: int = 1
+    max_rooms: int = 1
 
     @property
     def half(self) -> float:
