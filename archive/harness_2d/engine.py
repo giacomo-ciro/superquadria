@@ -38,9 +38,11 @@ class EpisodeResult:
 
     def summary(self) -> str:
         verdict = "SOLVED" if self.solved else "not solved"
-        return (f"{verdict} — {self.reason} | steps={self.steps} calls={self.calls} "
-                f"collisions={self.collisions} explored={self.explored:.0%} "
-                f"time={self.wall_time_s:.1f}s")
+        return (
+            f"{verdict} — {self.reason} | steps={self.steps} calls={self.calls} "
+            f"collisions={self.collisions} explored={self.explored:.0%} "
+            f"time={self.wall_time_s:.1f}s"
+        )
 
 
 class Episode:
@@ -80,8 +82,11 @@ class Episode:
         outcome = "start"
         reason = "step budget exhausted"
         trajectory: list[dict] = []
-        self.log.start(self.steps, f"episode start: spawn={self.start} key={self.scene.key.position} "
-                                    f"max_steps={self.max_steps} max_calls={self.max_calls}")
+        self.log.start(
+            self.steps,
+            f"episode start: spawn={self.start} key={self.scene.key.position} "
+            f"max_steps={self.max_steps} max_calls={self.max_calls}",
+        )
 
         while True:
             if self.scene.is_solved():
@@ -94,13 +99,18 @@ class Episode:
                 reason = "agent-call budget exhausted"
                 break
 
-            state = State.observe(self.scene, step=self.steps, last_outcome=outcome, size=self.view_size)
+            state = State.observe(
+                self.scene, step=self.steps, last_outcome=outcome, size=self.view_size
+            )
             self.policy.observe(state)
             if not self._draw(state, "thinking"):
                 reason = "closed by user"
                 break
 
-            self.log.start(self.steps, f"call {self.calls + 1}: requesting move @{self.scene.player.position}")
+            self.log.start(
+                self.steps,
+                f"call {self.calls + 1}: requesting move @{self.scene.player.position}",
+            )
             try:
                 move = self._act(state)
             except PolicyQuit:
@@ -117,16 +127,20 @@ class Episode:
                 break
 
             outcome = self._describe(executed, len(move.actions), blocked)
-            self.log.end(self.steps, f"call {self.calls}: {outcome} :: {move.reasoning[:110]}")
-            trajectory.append({
-                "call": self.calls,
-                "step": self.steps,
-                "position": self.scene.player.position.as_tuple(),
-                "planned": [d.name.lower() for d in move.actions],
-                "executed": executed,
-                "blocked": blocked,
-                "reasoning": move.reasoning,
-            })
+            self.log.end(
+                self.steps, f"call {self.calls}: {outcome} :: {move.reasoning[:110]}"
+            )
+            trajectory.append(
+                {
+                    "call": self.calls,
+                    "step": self.steps,
+                    "position": self.scene.player.position.as_tuple(),
+                    "planned": [d.name.lower() for d in move.actions],
+                    "executed": executed,
+                    "blocked": blocked,
+                    "reasoning": move.reasoning,
+                }
+            )
 
             if self.scene.is_solved():
                 reason = "reached the key"
@@ -147,8 +161,12 @@ class Episode:
             trajectory=trajectory,
         )
         self.log.end(self.steps, f"episode end: {result.summary()}")
-        self._draw(State.observe(self.scene, step=self.steps, last_outcome=reason, size=self.view_size),
-                   "solved" if solved else "stopped")
+        self._draw(
+            State.observe(
+                self.scene, step=self.steps, last_outcome=reason, size=self.view_size
+            ),
+            "solved" if solved else "stopped",
+        )
         return result
 
     # ---------------------------------------------------------------- internals
@@ -221,7 +239,12 @@ class Episode:
                 return executed, True
             self.steps += 1
             executed += 1
-            state = State.observe(self.scene, step=self.steps, last_outcome="in flight", size=self.view_size)
+            state = State.observe(
+                self.scene,
+                step=self.steps,
+                last_outcome="in flight",
+                size=self.view_size,
+            )
             # The player observes from every cell it walks through, not just from
             # where the trajectory happens to end. Folding the in-flight views in
             # here is what makes the fog map cover the whole path — otherwise a
@@ -238,10 +261,16 @@ class Episode:
 
     def _describe(self, executed: int, planned: int, blocked: bool) -> str:
         if blocked:
-            return (f"executed {executed}/{planned} moves, then the next move hit a wall — "
-                    f"the remaining {planned - executed} were discarded")
+            return (
+                f"executed {executed}/{planned} moves, then the next move hit a wall — "
+                f"the remaining {planned - executed} were discarded"
+            )
         if executed < planned:
-            reason = "you reached the key" if self.scene.is_solved() else "the step budget ran out"
+            reason = (
+                "you reached the key"
+                if self.scene.is_solved()
+                else "the step budget ran out"
+            )
             return f"executed {executed}/{planned} moves, then {reason}"
         return f"executed all {executed}/{planned} moves without collision"
 
@@ -251,11 +280,20 @@ class Episode:
         memory = getattr(self.policy, "memory", None)
         agent = getattr(self.policy, "agent", None)
         return self.renderer.draw(
-            self.scene, state, memory,
-            {"phase": phase, "steps": self.steps, "calls": self.calls,
-             "collisions": self.collisions, "max_steps": self.max_steps,
-             "policy": self.policy.name, "agent_model": getattr(agent, "model", None),
-             "agent_effort": getattr(agent, "effort", None), "waiting_s": waiting_s},
+            self.scene,
+            state,
+            memory,
+            {
+                "phase": phase,
+                "steps": self.steps,
+                "calls": self.calls,
+                "collisions": self.collisions,
+                "max_steps": self.max_steps,
+                "policy": self.policy.name,
+                "agent_model": getattr(agent, "model", None),
+                "agent_effort": getattr(agent, "effort", None),
+                "waiting_s": waiting_s,
+            },
         )
 
 
@@ -307,9 +345,11 @@ class Replay:
     @staticmethod
     def _flatten(trajectory: list[dict]) -> list[Direction]:
         """Re-derive the single-step action sequence the player actually walked."""
-        return [Direction.parse(name)
-                for call in trajectory
-                for name in call["planned"][: call["executed"]]]
+        return [
+            Direction.parse(name)
+            for call in trajectory
+            for name in call["planned"][: call["executed"]]
+        ]
 
     def _walked_memory(self) -> FogMemory:
         memory = FogMemory(height=self.scene.height, width=self.scene.width)
@@ -321,8 +361,9 @@ class Replay:
         return memory
 
     def _integrate(self, memory: FogMemory, index: int) -> None:
-        state = State.observe(self.scene, step=index, last_outcome=self.result.reason,
-                               size=self.view_size)
+        state = State.observe(
+            self.scene, step=index, last_outcome=self.result.reason, size=self.view_size
+        )
         memory.integrate(state)
 
     def _restart(self) -> None:
@@ -348,7 +389,9 @@ class Replay:
             keys = self.renderer.pending_keys
 
             if self.actions and pygame.K_SPACE in keys:
-                if index >= len(self.actions):  # at the end: space restarts, like most players
+                if index >= len(
+                    self.actions
+                ):  # at the end: space restarts, like most players
                     self._restart()
                     index = 0
                 playing = not playing
@@ -361,7 +404,9 @@ class Replay:
                 phase = "done" if done else "replaying"
                 if done:
                     playing = False
-                    self.memory = self.final_memory  # snap back to the authoritative accumulated view
+                    self.memory = (
+                        self.final_memory
+                    )  # snap back to the authoritative accumulated view
                 elif self.step_delay:
                     time.sleep(self.step_delay)
             else:
@@ -370,18 +415,29 @@ class Replay:
                     phase = "paused"
 
     def _draw(self, index: int, phase: str) -> bool:
-        state = State.observe(self.scene, step=index, last_outcome=self.result.reason, size=self.view_size)
+        state = State.observe(
+            self.scene, step=index, last_outcome=self.result.reason, size=self.view_size
+        )
         return self.renderer.draw(
-            self.scene, state, self.memory,
-            {"phase": phase, "steps": index, "calls": self.result.calls,
-             "collisions": self.result.collisions, "max_steps": len(self.actions),
-             "policy": self.policy_name, "agent_model": self.agent_model,
-             "agent_effort": self.agent_effort},
+            self.scene,
+            state,
+            self.memory,
+            {
+                "phase": phase,
+                "steps": index,
+                "calls": self.result.calls,
+                "collisions": self.result.collisions,
+                "max_steps": len(self.actions),
+                "policy": self.policy_name,
+                "agent_model": self.agent_model,
+                "agent_effort": self.agent_effort,
+            },
         )
 
 
-def save_episode(path: str | Path, maze: str | Path, result: EpisodeResult,
-                 extra: dict | None = None) -> Path:
+def save_episode(
+    path: str | Path, maze: str | Path, result: EpisodeResult, extra: dict | None = None
+) -> Path:
     """Persist the full trajectory so an episode can be replayed/audited.
 
     Nothing about the maze is copied — it already lives under `worlds_2d/`, terrain
@@ -396,10 +452,19 @@ def save_episode(path: str | Path, maze: str | Path, result: EpisodeResult,
     return path
 
 
-def load_episode(path: str | Path) -> tuple[Scene, EpisodeResult, str, str | None, str | None]:
+def load_episode(
+    path: str | Path,
+) -> tuple[Scene, EpisodeResult, str, str | None, str | None]:
     """Inverse of `save_episode`: reload an episode plus the maze it ran on."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     scene = Scene.load(payload["maze"])
-    result = EpisodeResult(**{k: v for k, v in payload.items() if k in EpisodeResult.__dataclass_fields__})
-    return (scene, result, payload.get("policy", "unknown"),
-            payload.get("agent_model"), payload.get("agent_effort"))
+    result = EpisodeResult(
+        **{k: v for k, v in payload.items() if k in EpisodeResult.__dataclass_fields__}
+    )
+    return (
+        scene,
+        result,
+        payload.get("policy", "unknown"),
+        payload.get("agent_model"),
+        payload.get("agent_effort"),
+    )

@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-permafrost-directorate.json",
+  "world": "worlds/the-permafrost-directorate.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 11,

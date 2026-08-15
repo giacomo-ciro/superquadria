@@ -26,7 +26,19 @@ from .state import State
 from .vector import Vector2D
 
 __all__ = [
-    "Episode", "EpisodeResult", "Entity", "Tile", "MazeGenerator", "FogMemory",
-    "Direction", "Move", "ClaudeNavigator", "FrontierPolicy", "Policy",
-    "Scene", "VIEW_SIZE", "State", "Vector2D",
+    "Episode",
+    "EpisodeResult",
+    "Entity",
+    "Tile",
+    "MazeGenerator",
+    "FogMemory",
+    "Direction",
+    "Move",
+    "ClaudeNavigator",
+    "FrontierPolicy",
+    "Policy",
+    "Scene",
+    "VIEW_SIZE",
+    "State",
+    "Vector2D",
 ]

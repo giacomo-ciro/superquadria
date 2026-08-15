@@ -22,8 +22,9 @@ _NEIGHBOURS = ((-1, 0), (1, 0), (0, -1), (0, 1))
 # --------------------------------------------------------------------- parsing
 
 
-def parse_rows(rows: Sequence[str], *, width: int, height: int | None = None,
-               fill: int = Tile.WALL) -> list[bytearray]:
+def parse_rows(
+    rows: Sequence[str], *, width: int, height: int | None = None, fill: int = Tile.WALL
+) -> list[bytearray]:
     """Parse glyph rows into a terrain grid, padding/truncating to shape.
 
     Deliberately forgiving: models drop characters, add spaces, or emit one row
@@ -88,8 +89,12 @@ def label_regions(terrain: list[bytearray]) -> tuple[list[list[int]], int]:
                 r, c = queue.popleft()
                 for dr, dc in _NEIGHBOURS:
                     nr, nc = r + dr, c + dc
-                    if (0 <= nr < height and 0 <= nc < width
-                            and terrain[nr][nc] != Tile.WALL and labels[nr][nc] == -1):
+                    if (
+                        0 <= nr < height
+                        and 0 <= nc < width
+                        and terrain[nr][nc] != Tile.WALL
+                        and labels[nr][nc] == -1
+                    ):
                         labels[nr][nc] = count
                         queue.append((nr, nc))
             count += 1
@@ -157,8 +162,15 @@ def connect_regions(terrain: list[bytearray]) -> int:
                 if nr >= height or nc >= width or owner[nr][nc] == -1:
                     continue
                 if owner[r][c] != owner[nr][nc]:
-                    edges.append((dist[r][c] + dist[nr][nc], owner[r][c], owner[nr][nc],
-                                  (r, c), (nr, nc)))
+                    edges.append(
+                        (
+                            dist[r][c] + dist[nr][nc],
+                            owner[r][c],
+                            owner[nr][nc],
+                            (r, c),
+                            (nr, nc),
+                        )
+                    )
     edges.sort(key=lambda e: e[0])
 
     root = list(range(count))
@@ -188,7 +200,9 @@ def connect_regions(terrain: list[bytearray]) -> int:
     return carved
 
 
-def bfs_path(terrain: list[bytearray], start: Vector2D, goal: Vector2D) -> list[Direction] | None:
+def bfs_path(
+    terrain: list[bytearray], start: Vector2D, goal: Vector2D
+) -> list[Direction] | None:
     """Shortest directional path between two open cells, or None if unreachable."""
     if start == goal:
         return []
@@ -219,9 +233,14 @@ def bfs_path(terrain: list[bytearray], start: Vector2D, goal: Vector2D) -> list[
 # ------------------------------------------------------------------- placement
 
 
-def random_open_cell(terrain: list[bytearray], rng: random.Random,
-                     *, exclude: Iterable[Vector2D] = (),
-                     min_distance: int = 0, anchor: Vector2D | None = None) -> Vector2D:
+def random_open_cell(
+    terrain: list[bytearray],
+    rng: random.Random,
+    *,
+    exclude: Iterable[Vector2D] = (),
+    min_distance: int = 0,
+    anchor: Vector2D | None = None,
+) -> Vector2D:
     """Pick a random open cell, preferring ones far from `anchor`."""
     banned = {p.as_tuple() for p in exclude}
     cells = [c for c in open_cells(terrain) if c.as_tuple() not in banned]
@@ -237,8 +256,9 @@ def random_open_cell(terrain: list[bytearray], rng: random.Random,
 # --------------------------------------------------------- procedural fallback
 
 
-def procedural_maze(side_length: int, rng: random.Random,
-                    *, braid: float = 0.12) -> list[bytearray]:
+def procedural_maze(
+    side_length: int, rng: random.Random, *, braid: float = 0.12
+) -> list[bytearray]:
     """Randomised depth-first ("recursive backtracker") maze.
 
     Used by `--offline` and when an agent generation call fails, so a run never
@@ -253,7 +273,8 @@ def procedural_maze(side_length: int, rng: random.Random,
         candidates = [
             (r + dr, c + dc)
             for dr, dc in ((-2, 0), (2, 0), (0, -2), (0, 2))
-            if 1 <= r + dr < height - 1 and 1 <= c + dc < width - 1
+            if 1 <= r + dr < height - 1
+            and 1 <= c + dc < width - 1
             and terrain[r + dr][c + dc] == Tile.WALL
         ]
         if not candidates:
@@ -271,12 +292,19 @@ def procedural_maze(side_length: int, rng: random.Random,
             for c in range(1, width - 1):
                 if terrain[r][c] != Tile.EMPTY:
                     continue
-                exits = [(r + dr, c + dc) for dr, dc in _NEIGHBOURS
-                         if terrain[r + dr][c + dc] == Tile.EMPTY]
+                exits = [
+                    (r + dr, c + dc)
+                    for dr, dc in _NEIGHBOURS
+                    if terrain[r + dr][c + dc] == Tile.EMPTY
+                ]
                 if len(exits) == 1 and rng.random() < braid:
-                    walls = [(r + dr, c + dc) for dr, dc in _NEIGHBOURS
-                             if terrain[r + dr][c + dc] == Tile.WALL
-                             and 0 < r + dr < height - 1 and 0 < c + dc < width - 1]
+                    walls = [
+                        (r + dr, c + dc)
+                        for dr, dc in _NEIGHBOURS
+                        if terrain[r + dr][c + dc] == Tile.WALL
+                        and 0 < r + dr < height - 1
+                        and 0 < c + dc < width - 1
+                    ]
                     if walls:
                         wr, wc = rng.choice(walls)
                         terrain[wr][wc] = Tile.EMPTY

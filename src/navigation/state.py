@@ -42,9 +42,13 @@ def _carrying_dict(carrying: list[Superquadric] | None) -> dict | None:
     return {
         "assembly": carrying[0].assembly,
         "parts": len(carrying),
-        "shapes": [{"scale": [round(a, 2) for a in p.scale],
-                    "exponents": [round(e, 2) for e in p.exponents]}
-                   for p in carrying],
+        "shapes": [
+            {
+                "scale": [round(a, 2) for a in p.scale],
+                "exponents": [round(e, 2) for e in p.exponents],
+            }
+            for p in carrying
+        ],
     }
 
 
@@ -82,9 +86,18 @@ class State:
     room_description: str | None = None
 
     @classmethod
-    def observe(cls, scene: Scene, sensor: Sensor, *, calls: int = 0, distance: float = 0.0,
-                collisions: int = 0, rooms_cleared: int = 0, failed_attempts: int = 0,
-                last_outcome: str = "start") -> "State":
+    def observe(
+        cls,
+        scene: Scene,
+        sensor: Sensor,
+        *,
+        calls: int = 0,
+        distance: float = 0.0,
+        collisions: int = 0,
+        rooms_cleared: int = 0,
+        failed_attempts: int = 0,
+        last_outcome: str = "start",
+    ) -> "State":
         visible = scene.visible(sensor)
         return cls(
             player_position=scene.player.position,

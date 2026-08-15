@@ -23,14 +23,13 @@ from itertools import accumulate
 from pathlib import Path
 
 from geometry import Vec3
-from geometry.superquadrics import DOOR, LOCK, OBJECT, PORTAL, Sensor
+from geometry.superquadrics import DOOR, LOCK, PORTAL, Sensor
+from logger import Logger
 from navigation import SpatialMemory, State, Trajectory
 from navigation.moves import MAX_WAYPOINTS, MOVE, PICK, PLACE, Action
 from navigation.policies import Policy, PolicyQuit
 from world.scene import BOUNDS, Scene
-from world.task import attempt_unlock, pick_at, place_at, task_for_door_or_lock, try_pickup
-
-from .logger import Logger, logger
+from world.task import pick_at, place_at, task_for_door_or_lock
 
 
 def _blocker_tag(blocked_by: int) -> str:
@@ -47,7 +46,8 @@ def move_row(record: dict) -> dict:
         "gen_s": record.get("gen_s", 0.0),
         "flown": len(record["accepted"]) - (1 if blocked else 0),
         "planned": len(record["requested"]),
-        "result": record.get("result") or (_blocker_tag(blocked_by) if blocked else "acted"),
+        "result": record.get("result")
+        or (_blocker_tag(blocked_by) if blocked else "acted"),
     }
 
 
@@ -68,10 +68,13 @@ class EpisodeResult:
 
     def summary(self) -> str:
         verdict = "SOLVED" if self.solved else "not solved"
-        return (f"{verdict} — {self.reason} | calls={self.calls} collisions={self.collisions} "
-                f"distance={self.distance:.0f} rooms_cleared={self.rooms_cleared} "
-                f"failed_attempts={self.failed_attempts} observed={self.observed} "
-                f"time={self.wall_time_s:.1f}s")
+        return (
+            f"{verdict} — {self.reason} | calls={self.calls} "
+            f"collisions={self.collisions} "
+            f"distance={self.distance:.0f} rooms_cleared={self.rooms_cleared} "
+            f"failed_attempts={self.failed_attempts} observed={self.observed} "
+            f"time={self.wall_time_s:.1f}s"
+        )
 
 
 @dataclass
@@ -89,8 +92,17 @@ class Budgets:
 class Episode:
     """One run of one policy against one scene."""
 
-    def __init__(self, scene: Scene, policy: Policy, *, sensor: Sensor, budgets: Budgets,
-                 renderer=None, log: Logger | None = None, step_delay: float = 0.0):
+    def __init__(
+        self,
+        scene: Scene,
+        policy: Policy,
+        *,
+        sensor: Sensor,
+        budgets: Budgets,
+        renderer=None,
+        log: Logger | None = None,
+        step_delay: float = 0.0,
+    ):
         self.scene = scene
         self.policy = policy
         self.sensor = sensor
@@ -127,9 +139,12 @@ class Episode:
         outcome = "start"
         reason = "agent-call budget exhausted"
         trajectory_log: list[dict] = []
-        self.log.log(f"start: spawn={self.start.rounded(1)} "
-                     f"room='{self.scene.current_room_name(self.start)}' "
-                     f"max_calls={budgets.max_calls} max_distance={budgets.max_distance:.0f}m", stage="episode")
+        self.log.log(
+            f"start: spawn={self.start.rounded(1)} "
+            f"room='{self.scene.current_room_name(self.start)}' "
+            f"max_calls={budgets.max_calls} max_distance={budgets.max_distance:.0f}m",
+            stage="episode",
+        )
 
         while True:
             if self.rooms_cleared >= self.rooms_to_clear:
@@ -151,7 +166,11 @@ class Episode:
                 reason = "closed by user"
                 break
 
-            self.log.log(f"call {self.calls + 1}: requesting action batch @ {self.scene.player.position.rounded(1)}", stage="navigation:agent")
+            self.log.log(
+                f"call {self.calls + 1}: requesting action batch "
+                f"@ {self.scene.player.position.rounded(1)}",
+                stage="navigation:agent",
+            )
             asked = time.monotonic()
             try:
                 trajectory = self._act(state)
@@ -165,7 +184,11 @@ class Episode:
             self.calls += 1
 
             for idx, act in enumerate(trajectory.actions, 1):
-                self.log.log(f"call {self.calls}: action {idx}/{len(trajectory.actions)}: {act.type.upper()} @ {act.target.rounded(1)}", stage="navigation:action")
+                self.log.log(
+                    f"call {self.calls}: action {idx}/{len(trajectory.actions)}: "
+                    f"{act.type.upper()} @ {act.target.rounded(1)}",
+                    stage="navigation:action",
+                )
 
             departed = time.monotonic()
             record = self._execute(trajectory, gen_s=gen_s)
@@ -212,9 +235,16 @@ class Episode:
     # --------------------------------------------------------------- internals
 
     def _observe(self, outcome: str) -> State:
-        return State.observe(self.scene, self.sensor, calls=self.calls, distance=self.distance,
-                             collisions=self.collisions, rooms_cleared=self.rooms_cleared,
-                             failed_attempts=self.failed_attempts, last_outcome=outcome)
+        return State.observe(
+            self.scene,
+            self.sensor,
+            calls=self.calls,
+            distance=self.distance,
+            collisions=self.collisions,
+            rooms_cleared=self.rooms_cleared,
+            failed_attempts=self.failed_attempts,
+            last_outcome=outcome,
+        )
 
     def _sense(self, outcome: str, flown: float) -> State:
         """Fold this pose into memory, but only every `sensor.stride` units.
@@ -314,15 +344,21 @@ class Episode:
 
         active_actions: list[dict] = []
         for idx, act in enumerate(trajectory.actions[: budgets.max_waypoints], 1):
-            dist = round((act.target - player.position).length(), 1) if act.type == MOVE and idx == 1 else None
-            active_actions.append({
-                "idx": idx,
-                "type": act.type.upper(),
-                "target": [round(c, 1) for c in act.target.as_tuple()],
-                "status": "pending",
-                "info": "",
-                "dist": dist,
-            })
+            dist = (
+                round((act.target - player.position).length(), 1)
+                if act.type == MOVE and idx == 1
+                else None
+            )
+            active_actions.append(
+                {
+                    "idx": idx,
+                    "type": act.type.upper(),
+                    "target": [round(c, 1) for c in act.target.as_tuple()],
+                    "status": "pending",
+                    "info": "",
+                    "dist": dist,
+                }
+            )
         self._active_turn = {
             "call": self.calls,
             "reasoning": trajectory.reasoning,
@@ -330,7 +366,9 @@ class Episode:
             "gen_s": round(gen_s, 1),
         }
 
-        for action_idx, action in enumerate(trajectory.actions[: budgets.max_waypoints]):
+        for action_idx, action in enumerate(
+            trajectory.actions[: budgets.max_waypoints]
+        ):
             active_actions[action_idx]["status"] = "active"
             if action.type == MOVE:
                 target = action.target
@@ -352,10 +390,18 @@ class Episode:
                     self.policy.observe(state)
                     if not self._draw(state, "turning"):
                         self._aborted = True
-                        return self._record(requested, accepted, poses, blocked_by, before,
-                                            door_result=door_result, picked_up=picked_up,
-                                            placed=placed, action_failed=action_failed,
-                                            events=events)
+                        return self._record(
+                            requested,
+                            accepted,
+                            poses,
+                            blocked_by,
+                            before,
+                            door_result=door_result,
+                            picked_up=picked_up,
+                            placed=placed,
+                            action_failed=action_failed,
+                            events=events,
+                        )
 
                 steps = max(1, math.ceil(length / budgets.move_increment))
                 stop = False
@@ -377,10 +423,18 @@ class Episode:
                     state = self._sense("in flight", flown)
                     if not self._draw(state, "flying"):
                         self._aborted = True
-                        return self._record(requested, accepted, poses, blocked_by, before,
-                                            door_result=door_result, picked_up=picked_up,
-                                            placed=placed, action_failed=action_failed,
-                                            events=events)
+                        return self._record(
+                            requested,
+                            accepted,
+                            poses,
+                            blocked_by,
+                            before,
+                            door_result=door_result,
+                            picked_up=picked_up,
+                            placed=placed,
+                            action_failed=action_failed,
+                            events=events,
+                        )
                     if self.step_delay:
                         time.sleep(self.step_delay)
                     if self.distance >= budgets.max_distance:
@@ -397,18 +451,32 @@ class Episode:
                 if success:
                     name = desc.replace("picked up ", "")
                     picked_up.append(name)
-                    events.append({"pose_offset": len(poses), "type": "pick", "name": name,
-                                   "target": action.target.as_tuple()})
+                    events.append(
+                        {
+                            "pose_offset": len(poses),
+                            "type": "pick",
+                            "name": name,
+                            "target": action.target.as_tuple(),
+                        }
+                    )
                     active_actions[action_idx]["status"] = "done"
                     active_actions[action_idx]["info"] = name[:10]
                     state = self._observe("picked up object")
                     self.policy.observe(state)
                     if not self._draw(state, "picking"):
                         self._aborted = True
-                        return self._record(requested, accepted, poses, blocked_by, before,
-                                            door_result=door_result, picked_up=picked_up,
-                                            placed=placed, action_failed=action_failed,
-                                            events=events)
+                        return self._record(
+                            requested,
+                            accepted,
+                            poses,
+                            blocked_by,
+                            before,
+                            door_result=door_result,
+                            picked_up=picked_up,
+                            placed=placed,
+                            action_failed=action_failed,
+                            events=events,
+                        )
                 else:
                     action_failed = f"pick failed: {desc}"
                     active_actions[action_idx]["status"] = "failed"
@@ -418,9 +486,12 @@ class Episode:
             elif action.type == PLACE:
                 accepted.append(action.to_dict())
                 tol = self.scene.meta.get("match_tolerance", {})
-                success, desc, d_res = place_at(self.scene, action.target,
-                                                tol_scale=tol.get("scale", 0.05),
-                                                tol_exp=tol.get("exponents", 0.05))
+                success, desc, d_res = place_at(
+                    self.scene,
+                    action.target,
+                    tol_scale=tol.get("scale", 0.05),
+                    tol_exp=tol.get("exponents", 0.05),
+                )
                 if success:
                     if d_res == "opened":
                         self.rooms_cleared += 1
@@ -434,16 +505,31 @@ class Episode:
                         placed.append(desc)
                         active_actions[action_idx]["info"] = "placed"
                     active_actions[action_idx]["status"] = "done"
-                    events.append({"pose_offset": len(poses), "type": "place", "door_result": d_res,
-                                   "desc": desc, "target": action.target.as_tuple()})
+                    events.append(
+                        {
+                            "pose_offset": len(poses),
+                            "type": "place",
+                            "door_result": d_res,
+                            "desc": desc,
+                            "target": action.target.as_tuple(),
+                        }
+                    )
                     state = self._observe("placed object")
                     self.policy.observe(state)
                     if not self._draw(state, "placing"):
                         self._aborted = True
-                        return self._record(requested, accepted, poses, blocked_by, before,
-                                            door_result=door_result, picked_up=picked_up,
-                                            placed=placed, action_failed=action_failed,
-                                            events=events)
+                        return self._record(
+                            requested,
+                            accepted,
+                            poses,
+                            blocked_by,
+                            before,
+                            door_result=door_result,
+                            picked_up=picked_up,
+                            placed=placed,
+                            action_failed=action_failed,
+                            events=events,
+                        )
                     if door_result == "opened":
                         break
                 else:
@@ -452,20 +538,46 @@ class Episode:
                     active_actions[action_idx]["info"] = "fail reach"
                     break
 
-        return self._record(requested, accepted, poses, blocked_by, before,
-                            door_result=door_result, picked_up=picked_up,
-                            placed=placed, action_failed=action_failed,
-                            events=events)
+        return self._record(
+            requested,
+            accepted,
+            poses,
+            blocked_by,
+            before,
+            door_result=door_result,
+            picked_up=picked_up,
+            placed=placed,
+            action_failed=action_failed,
+            events=events,
+        )
 
-    def _record(self, requested, accepted, poses, blocked_by, observed_before, *,
-               door_result: str | None = None, picked_up=(), placed=(),
-               action_failed: str | None = None, events=()) -> dict:
+    def _record(
+        self,
+        requested,
+        accepted,
+        poses,
+        blocked_by,
+        observed_before,
+        *,
+        door_result: str | None = None,
+        picked_up=(),
+        placed=(),
+        action_failed: str | None = None,
+        events=(),
+    ) -> dict:
         after = len(self.policy.memory.primitives) if self.policy.memory else 0
-        return {"requested": requested, "accepted": accepted,
-                "poses": poses, "blocked_by": blocked_by, "observed": after - observed_before,
-                "door_result": door_result, "picked_up": list(picked_up),
-                "placed": list(placed), "action_failed": action_failed,
-                "events": list(events)}
+        return {
+            "requested": requested,
+            "accepted": accepted,
+            "poses": poses,
+            "blocked_by": blocked_by,
+            "observed": after - observed_before,
+            "door_result": door_result,
+            "picked_up": list(picked_up),
+            "placed": list(placed),
+            "action_failed": action_failed,
+            "events": list(events),
+        }
 
     def _tag(self, record: dict) -> str:
         """The same call, in the few characters a history row has room for."""
@@ -488,43 +600,83 @@ class Episode:
     def _describe(self, record: dict, planned: int) -> str:
         done = len(record["accepted"])
         blocked_by = record.get("blocked_by")
-        gained = f" You detected {record['observed']} new shape(s)." if record.get("observed") else ""
-        picked = f" You picked up {', '.join(record['picked_up'])}." if record.get("picked_up") else ""
+        gained = (
+            f" You detected {record['observed']} new shape(s)."
+            if record.get("observed")
+            else ""
+        )
+        picked = (
+            f" You picked up {', '.join(record['picked_up'])}."
+            if record.get("picked_up")
+            else ""
+        )
         placed = f" {'; '.join(record['placed'])}." if record.get("placed") else ""
-        failed = f" (Stopped because {record['action_failed']})" if record.get("action_failed") else ""
+        failed = (
+            f" (Stopped because {record['action_failed']})"
+            if record.get("action_failed")
+            else ""
+        )
 
         if record.get("door_result") == "opened":
-            return f"you executed {done} of {planned} actions, and the door opened!{gained}"
+            return (
+                f"you executed {done} of {planned} actions, and the door "
+                f"opened!{gained}"
+            )
         if record.get("door_result") == "locked":
-            return (f"you executed {done} of {planned} actions, and tried the locked door — it did "
-                    f"not match and the object was destroyed.{gained}")
+            return (
+                f"you executed {done} of {planned} actions, and tried the locked "
+                f"door — it did not match and the object was destroyed.{gained}"
+            )
         if blocked_by is not None:
-            return (f"you executed {done - 1} of {planned} actions, then hit "
-                    f"{self.scene.describe_blocker(blocked_by)} — the rest of the batch was discarded.{gained}{picked}{placed}")
+            return (
+                f"you executed {done - 1} of {planned} actions, then hit "
+                f"{self.scene.describe_blocker(blocked_by)} — the rest of the batch "
+                f"was discarded.{gained}{picked}{placed}"
+            )
         if record.get("action_failed"):
-            return f"you executed {done} of {planned} actions.{failed}{gained}{picked}{placed}"
+            return (
+                f"you executed {done} of {planned} actions."
+                f"{failed}{gained}{picked}{placed}"
+            )
         if done < planned:
-            return f"you executed {done} of {planned} actions, then a budget ran out.{gained}{picked}{placed}"
+            return (
+                f"you executed {done} of {planned} actions, then a budget ran out."
+                f"{gained}{picked}{placed}"
+            )
         return f"you executed all {done} actions successfully.{gained}{picked}{placed}"
 
     def _draw(self, state: State, phase: str, waiting_s: float = 0.0) -> bool:
         if self.renderer is None:
             return True
-        return self.renderer.draw(self.scene, state, self.policy.memory, {
-            "phase": phase, "calls": self.calls, "max_calls": self.budgets.max_calls,
-            "collisions": self.collisions, "distance": self.distance,
-            "max_collisions": self.budgets.max_collisions,
-            "rooms_cleared": self.rooms_cleared, "rooms_total": self.rooms_to_clear,
-            "failed_attempts": self.failed_attempts,
-            "max_distance": self.budgets.max_distance, "policy": self.policy.name,
-            "agent_model": getattr(getattr(self.policy, "agent", None), "model", None),
-            "agent_effort": getattr(getattr(self.policy, "agent", None), "effort", None),
-            "waiting_s": waiting_s,
-            "history": self.history,
-            "active_turn": self._active_turn,
-            "match_tolerance": self.scene.meta.get("match_tolerance", {}),
-            "elapsed_s": time.monotonic() - self.started,
-        })
+        return self.renderer.draw(
+            self.scene,
+            state,
+            self.policy.memory,
+            {
+                "phase": phase,
+                "calls": self.calls,
+                "max_calls": self.budgets.max_calls,
+                "collisions": self.collisions,
+                "distance": self.distance,
+                "max_collisions": self.budgets.max_collisions,
+                "rooms_cleared": self.rooms_cleared,
+                "rooms_total": self.rooms_to_clear,
+                "failed_attempts": self.failed_attempts,
+                "max_distance": self.budgets.max_distance,
+                "policy": self.policy.name,
+                "agent_model": getattr(
+                    getattr(self.policy, "agent", None), "model", None
+                ),
+                "agent_effort": getattr(
+                    getattr(self.policy, "agent", None), "effort", None
+                ),
+                "waiting_s": waiting_s,
+                "history": self.history,
+                "active_turn": self._active_turn,
+                "match_tolerance": self.scene.meta.get("match_tolerance", {}),
+                "elapsed_s": time.monotonic() - self.started,
+            },
+        )
 
 
 def _extract_events(trajectory: list[dict]) -> list[tuple[int, dict]]:
@@ -557,7 +709,9 @@ def _extract_events(trajectory: list[dict]) -> list[tuple[int, dict]]:
                         best_idx = local_p
                         best_d = float("inf")
                         for i in range(local_p, len(poses)):
-                            d = math.sqrt(sum((x - y) ** 2 for x, y in zip(poses[i][:3], target)))
+                            d = math.sqrt(
+                                sum((x - y) ** 2 for x, y in zip(poses[i][:3], target))
+                            )
                             if d < best_d:
                                 best_d = d
                                 best_idx = i
@@ -568,14 +722,38 @@ def _extract_events(trajectory: list[dict]) -> list[tuple[int, dict]]:
                     if pick_idx < len(picked_up):
                         name = picked_up[pick_idx]
                         pick_idx += 1
-                        all_events.append((global_offset + local_p, {"type": "pick", "name": name, "target": target}))
+                        all_events.append(
+                            (
+                                global_offset + local_p,
+                                {"type": "pick", "name": name, "target": target},
+                            )
+                        )
                 elif atype == PLACE:
                     if door_result is not None:
-                        all_events.append((global_offset + local_p, {"type": "place", "door_result": door_result, "target": target}))
+                        all_events.append(
+                            (
+                                global_offset + local_p,
+                                {
+                                    "type": "place",
+                                    "door_result": door_result,
+                                    "target": target,
+                                },
+                            )
+                        )
                     elif placed_idx < len(placed):
                         desc = placed[placed_idx]
                         placed_idx += 1
-                        all_events.append((global_offset + local_p, {"type": "place", "door_result": None, "desc": desc, "target": target}))
+                        all_events.append(
+                            (
+                                global_offset + local_p,
+                                {
+                                    "type": "place",
+                                    "door_result": None,
+                                    "desc": desc,
+                                    "target": target,
+                                },
+                            )
+                        )
         global_offset += len(c.get("poses", []))
     return all_events
 
@@ -588,9 +766,19 @@ class Replay:
     Consumes only the saved world and episode JSON — it never calls an agent.
     """
 
-    def __init__(self, scene: Scene, renderer, result: EpisodeResult, policy_name: str, *,
-                 sensor: Sensor, agent_model: str | None = None, agent_effort: str | None = None,
-                 step_delay: float = 0.0, max_collisions: float | None = None):
+    def __init__(
+        self,
+        scene: Scene,
+        renderer,
+        result: EpisodeResult,
+        policy_name: str,
+        *,
+        sensor: Sensor,
+        agent_model: str | None = None,
+        agent_effort: str | None = None,
+        step_delay: float = 0.0,
+        max_collisions: float | None = None,
+    ):
         self._initial_scene_data = scene.to_dict()
         self.collision_resolution = scene.primitives.collision_resolution
         self.scene = scene
@@ -603,13 +791,20 @@ class Replay:
         self.step_delay = step_delay if step_delay > 0 else 0.02
         self.speed = 1.0
         if max_collisions is None:
-            self.max_collisions = math.inf if policy_name == "manual" else Budgets.max_collisions
+            self.max_collisions = (
+                math.inf if policy_name == "manual" else Budgets.max_collisions
+            )
         else:
             self.max_collisions = max_collisions
-        self.poses = [(Vec3(*pose[:3]), Vec3(*pose[3:])) for call in result.trajectory
-                      for pose in call["poses"]]
+        self.poses = [
+            (Vec3(*pose[:3]), Vec3(*pose[3:]))
+            for call in result.trajectory
+            for pose in call["poses"]
+        ]
         self.history = [move_row(call) for call in result.trajectory]
-        self.call_ends = list(accumulate(len(call["poses"]) for call in result.trajectory))
+        self.call_ends = list(
+            accumulate(len(call["poses"]) for call in result.trajectory)
+        )
         self.call_collisions = [0]
         c_count = 0
         for call in result.trajectory:
@@ -621,12 +816,16 @@ class Replay:
         self.memory = SpatialMemory()
         self._current_index = 0
         self.rooms_cleared = 0
-        self.rooms_total = len(self._initial_scene_data.get("meta", {}).get("task", {})) or 1
+        self.rooms_total = (
+            len(self._initial_scene_data.get("meta", {}).get("task", {})) or 1
+        )
         self.failed_attempts = 0
         self._seek(0)
 
     def _reset_scene(self) -> None:
-        fresh = Scene.from_dict(self._initial_scene_data, collision_resolution=self.collision_resolution)
+        fresh = Scene.from_dict(
+            self._initial_scene_data, collision_resolution=self.collision_resolution
+        )
         self.scene.primitives = fresh.primitives
         self.scene.player = fresh.player
         self.rooms_cleared = 0
@@ -646,7 +845,9 @@ class Replay:
             dt = min(0.1, now - last_time)
             last_time = now
 
-            if self.poses and ("r" in self.renderer.pending_keys or "R" in self.renderer.pending_keys):
+            if self.poses and (
+                "r" in self.renderer.pending_keys or "R" in self.renderer.pending_keys
+            ):
                 self._seek(0)
                 index = 0
                 playing = False
@@ -658,9 +859,15 @@ class Replay:
                     index = 0
                 playing = not playing
                 step_acc = 0.0
-            if any(k in self.renderer.pending_keys for k in ("+", "=", "plus", "numpad_+", "numpad +", "add")):
+            if any(
+                k in self.renderer.pending_keys
+                for k in ("+", "=", "plus", "numpad_+", "numpad +", "add")
+            ):
                 self.speed = min(4.0, round(self.speed + 0.25, 2))
-            elif any(k in self.renderer.pending_keys for k in ("-", "_", "minus", "numpad_-", "numpad -", "subtract")):
+            elif any(
+                k in self.renderer.pending_keys
+                for k in ("-", "_", "minus", "numpad_-", "numpad -", "subtract")
+            ):
                 self.speed = max(0.25, round(self.speed - 0.25, 2))
 
             if playing and index < len(self.poses):
@@ -745,9 +952,13 @@ class Replay:
                 self.scene.player.carrying = None
                 # Open the door and lock this placement targeted
                 target = Vec3(*ev["target"])
-                candidates = [p for p in self.scene.primitives if p.kind in (DOOR, LOCK)]
+                candidates = [
+                    p for p in self.scene.primitives if p.kind in (DOOR, LOCK)
+                ]
                 if candidates:
-                    nearest = min(candidates, key=lambda p: p.position.distance_to(target))
+                    nearest = min(
+                        candidates, key=lambda p: p.position.distance_to(target)
+                    )
                     task = task_for_door_or_lock(self.scene, nearest.id)
                     if task is not None:
                         door_id = task.get("door_id")
@@ -763,7 +974,9 @@ class Replay:
             else:
                 carried = self.scene.player.carrying
                 if carried:
-                    centroid = sum((p.position for p in carried), Vec3(0.0, 0.0, 0.0)) * (1.0 / len(carried))
+                    centroid = sum(
+                        (p.position for p in carried), Vec3(0.0, 0.0, 0.0)
+                    ) * (1.0 / len(carried))
                     target = Vec3(*ev["target"])
                     delta = target - centroid
                     for p in carried:
@@ -773,16 +986,25 @@ class Replay:
 
     def _state(self) -> State:
         call_idx = bisect_right(self.call_ends, self._current_index)
-        cur_collisions = self.call_collisions[min(call_idx, len(self.call_collisions) - 1)]
-        return State.observe(self.scene, self.sensor, calls=self.result.calls,
-                             distance=self.result.distance, collisions=cur_collisions,
-                             rooms_cleared=self.rooms_cleared,
-                             failed_attempts=self.failed_attempts,
-                             last_outcome=self.result.reason)
+        cur_collisions = self.call_collisions[
+            min(call_idx, len(self.call_collisions) - 1)
+        ]
+        return State.observe(
+            self.scene,
+            self.sensor,
+            calls=self.result.calls,
+            distance=self.result.distance,
+            collisions=cur_collisions,
+            rooms_cleared=self.rooms_cleared,
+            failed_attempts=self.failed_attempts,
+            last_outcome=self.result.reason,
+        )
 
     def _draw(self, index: int, phase: str) -> bool:
         call_idx = bisect_right(self.call_ends, index)
-        cur_collisions = self.call_collisions[min(call_idx, len(self.call_collisions) - 1)]
+        cur_collisions = self.call_collisions[
+            min(call_idx, len(self.call_collisions) - 1)
+        ]
         active_turn = None
         if self.result.trajectory:
             target_call_idx = min(call_idx, len(self.result.trajectory) - 1)
@@ -792,15 +1014,29 @@ class Replay:
             blocked_by = call.get("blocked_by")
             actions = []
             for j, a in enumerate(requested, 1):
-                status = "done" if j <= len(accepted) else ("failed" if j == len(accepted) + 1 and blocked_by is not None else "pending")
-                info_str = _blocker_tag(blocked_by) if status == "failed" and blocked_by is not None else ""
-                actions.append({
-                    "idx": j,
-                    "type": a.get("type", "MOVE").upper(),
-                    "target": [round(c, 1) for c in a.get("target", [0, 0, 0])],
-                    "status": status,
-                    "info": info_str,
-                })
+                status = (
+                    "done"
+                    if j <= len(accepted)
+                    else (
+                        "failed"
+                        if j == len(accepted) + 1 and blocked_by is not None
+                        else "pending"
+                    )
+                )
+                info_str = (
+                    _blocker_tag(blocked_by)
+                    if status == "failed" and blocked_by is not None
+                    else ""
+                )
+                actions.append(
+                    {
+                        "idx": j,
+                        "type": a.get("type", "MOVE").upper(),
+                        "target": [round(c, 1) for c in a.get("target", [0, 0, 0])],
+                        "status": status,
+                        "info": info_str,
+                    }
+                )
             active_turn = {
                 "call": call.get("call", target_call_idx + 1),
                 "reasoning": call.get("reasoning", ""),
@@ -808,31 +1044,45 @@ class Replay:
                 "gen_s": call.get("gen_s", 0.0),
             }
 
-        return self.renderer.draw(self.scene, self._state(), self.memory, {
-            "phase": phase, "calls": self.result.calls, "max_calls": self.result.calls,
-            "collisions": cur_collisions,
-            "max_collisions": self.max_collisions,
-            "rooms_cleared": self.rooms_cleared, "rooms_total": self.rooms_total,
-            "failed_attempts": self.failed_attempts,
-            "distance": self.result.distance * (index / max(1, len(self.poses))),
-            "max_distance": self.result.distance, "policy": self.policy_name,
-            "agent_model": self.agent_model, "agent_effort": self.agent_effort,
-            "replay": f"{index}/{len(self.poses)}",
-            "speed": self.speed,
-            "history": self.history[:bisect_right(self.call_ends, index)],
-            "active_turn": active_turn,
-            "match_tolerance": self.scene.meta.get("match_tolerance", {}),
-            # The original run's clock, not this playback's: how long the episode
-            # took is a property of the episode.
-            "elapsed_s": self.result.wall_time_s,
-        })
+        return self.renderer.draw(
+            self.scene,
+            self._state(),
+            self.memory,
+            {
+                "phase": phase,
+                "calls": self.result.calls,
+                "max_calls": self.result.calls,
+                "collisions": cur_collisions,
+                "max_collisions": self.max_collisions,
+                "rooms_cleared": self.rooms_cleared,
+                "rooms_total": self.rooms_total,
+                "failed_attempts": self.failed_attempts,
+                "distance": self.result.distance * (index / max(1, len(self.poses))),
+                "max_distance": self.result.distance,
+                "policy": self.policy_name,
+                "agent_model": self.agent_model,
+                "agent_effort": self.agent_effort,
+                "replay": f"{index}/{len(self.poses)}",
+                "speed": self.speed,
+                "history": self.history[: bisect_right(self.call_ends, index)],
+                "active_turn": active_turn,
+                "match_tolerance": self.scene.meta.get("match_tolerance", {}),
+                # The original run's clock, not this playback's: how long the episode
+                # took is a property of the episode.
+                "elapsed_s": self.result.wall_time_s,
+            },
+        )
 
 
-def save_episode(path: str | Path, world: str | Path, result: EpisodeResult,
-                 extra: dict | None = None) -> Path:
+def save_episode(
+    path: str | Path,
+    world: str | Path,
+    result: EpisodeResult,
+    extra: dict | None = None,
+) -> Path:
     """Persist the full trajectory so an episode can be replayed and audited.
 
-    Nothing about the world is copied — it already lives under `worlds_3d/`,
+    Nothing about the world is copied — it already lives under `worlds/`,
     primitives and metadata alike, so the episode records only the path it ran on.
     """
     path = Path(path)
@@ -848,8 +1098,14 @@ def load_episode(path: str | Path, *, collision_resolution: int = 8):
     """Inverse of `save_episode`: reload an episode plus the world it ran on."""
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     scene = Scene.load(payload["world"], collision_resolution=collision_resolution)
-    result = EpisodeResult(**{k: v for k, v in payload.items()
-                              if k in EpisodeResult.__dataclass_fields__})
-    return (scene, result, payload.get("policy", "unknown"),
-            payload.get("agent_model"), payload.get("agent_effort"),
-            payload.get("max_collisions"))
+    result = EpisodeResult(
+        **{k: v for k, v in payload.items() if k in EpisodeResult.__dataclass_fields__}
+    )
+    return (
+        scene,
+        result,
+        payload.get("policy", "unknown"),
+        payload.get("agent_model"),
+        payload.get("agent_effort"),
+        payload.get("max_collisions"),
+    )

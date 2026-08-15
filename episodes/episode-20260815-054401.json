@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-briarwick-cottage.json",
+  "world": "worlds/the-briarwick-cottage.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 17,

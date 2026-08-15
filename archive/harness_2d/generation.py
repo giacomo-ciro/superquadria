@@ -30,26 +30,48 @@ from .scene import VIEW_SIZE, Scene
 MAZE_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "theme": {"type": "string", "description": "Short name for this maze, e.g. 'Collapsed Archive'."},
-        "description": {"type": "string", "description": "2-3 sentences describing the spatial character of the maze."},
+        "theme": {
+            "type": "string",
+            "description": "Short name for this maze, e.g. 'Collapsed Archive'.",
+        },
+        "description": {
+            "type": "string",
+            "description": (
+                "2-3 sentences describing the spatial character of the maze."
+            ),
+        },
         "structural_rules": {
             "type": "array",
-            "description": "3-6 concrete, drawable rules, e.g. 'rooms of 6x6 connected by single-cell doorways'.",
+            "description": (
+                "3-6 concrete, drawable rules, e.g. "
+                "'rooms of 6x6 connected by single-cell doorways'."
+            ),
             "items": {"type": "string"},
             "minItems": 3,
             "maxItems": 6,
         },
         "target_open_ratio": {
             "type": "number",
-            "description": "Fraction of cells that should be walkable, between 0.25 and 0.6.",
+            "description": (
+                "Fraction of cells that should be walkable, between 0.25 and 0.6."
+            ),
         },
         "rows": {
             "type": "array",
-            "description": "The maze's rows, top to bottom. Each string uses only '#' (wall) and '.' (floor).",
+            "description": (
+                "The maze's rows, top to bottom. "
+                "Each string uses only '#' (wall) and '.' (floor)."
+            ),
             "items": {"type": "string"},
         },
     },
-    "required": ["theme", "description", "structural_rules", "target_open_ratio", "rows"],
+    "required": [
+        "theme",
+        "description",
+        "structural_rules",
+        "target_open_ratio",
+        "rows",
+    ],
     "additionalProperties": False,
 }
 
@@ -73,12 +95,16 @@ class MazeGenerator:
     # --------------------------------------------------------------- top level
 
     def generate(self, brief_hint: str | None = None) -> Scene:
-        self.log.start("generate", f"requesting {self.side_length}x{self.side_length} design+maze")
+        self.log.start(
+            "generate", f"requesting {self.side_length}x{self.side_length} design+maze"
+        )
         brief, terrain, source = self._generate_maze(brief_hint)
         self.log.info("generate", f"theme: {brief['theme']} — {brief['description']}")
 
         ensure_border_walls(terrain)
-        self.log.end("generate", f"maze drawn ({source}), open ratio {open_ratio(terrain):.2f}")
+        self.log.end(
+            "generate", f"maze drawn ({source}), open ratio {open_ratio(terrain):.2f}"
+        )
 
         scene = self._populate(terrain)
         scene.meta = {
@@ -95,25 +121,35 @@ class MazeGenerator:
         """Procedural maze with no agent calls — for smoke tests and demos."""
         terrain = procedural_maze(self.side_length, self._rng)
         scene = self._populate(terrain)
-        scene.meta = {"generator": "procedural",
-                      "open_ratio": round(open_ratio(terrain), 4)}
+        scene.meta = {
+            "generator": "procedural",
+            "open_ratio": round(open_ratio(terrain), 4),
+        }
         return scene
 
     # ------------------------------------------------------------------ stages
 
-    def _generate_maze(self, brief_hint: str | None) -> tuple[dict, list[bytearray], str]:
+    def _generate_maze(
+        self, brief_hint: str | None
+    ) -> tuple[dict, list[bytearray], str]:
         if brief_hint:
-            intent = (f"The operator asked for this environment:\n\"{brief_hint}\"\n"
-                      "Turn that request into a concrete, drawable specification.")
+            intent = (
+                f'The operator asked for this environment:\n"{brief_hint}"\n'
+                "Turn that request into a concrete, drawable specification."
+            )
         else:
-            intent = ("Nobody has specified what this maze should be. Decide for yourself, "
-                      "and pick something with distinctive spatial structure rather than "
-                      "uniform noise.")
-        prompt = f"""You are designing and drawing a {self.side_length}x{self.side_length} 2D grid maze for a game.
+            intent = (
+                "Nobody has specified what this maze should be. Decide for yourself, "
+                "and pick something with distinctive spatial structure rather than "
+                "uniform noise."
+            )
+        prompt = f"""You are designing and drawing a \
+{self.side_length}x{self.side_length} 2D grid maze for a game.
 
 {intent}
 
-A player with a {self.view_size}x{self.view_size} field of view must search this maze for a hidden key, so it
+A player with a {self.view_size}x{self.view_size} field of view must search this maze \
+for a hidden key, so it
 needs long sightlines and landmarks, connected floor, and no vast empty halls.
 
 Along with the design (theme, description, structural rules, target open ratio),
@@ -125,7 +161,8 @@ OUTPUT FORMAT for `rows`:
 - '#' is wall, '.' is walkable floor. No other characters, no spaces, no row numbers.
 
 CONSTRAINTS:
-- Row 0, row {self.side_length - 1}, column 0, and column {self.side_length - 1} must be '#' (outer wall).
+- Row 0, row {self.side_length - 1}, column 0, and column {self.side_length - 1} \
+must be '#' (outer wall).
 - Roughly `target_open_ratio` of cells should be '.'.
 - All floor must form one connected network reachable from any other floor cell —
   no sealed pockets.
@@ -133,7 +170,9 @@ CONSTRAINTS:
 """
         try:
             payload = self.agent.run(prompt, MAZE_SCHEMA)
-            rows = parse_rows(payload["rows"], width=self.side_length, height=self.side_length)
+            rows = parse_rows(
+                payload["rows"], width=self.side_length, height=self.side_length
+            )
             ratio = open_ratio(rows)
             if ratio < 0.05:
                 raise ValueError(f"maze came back {1 - ratio:.0%} wall")
@@ -143,7 +182,8 @@ CONSTRAINTS:
             self.log.info("generate", f"maze generation fell back to procedural: {exc}")
             brief = {
                 "theme": "Procedural fallback",
-                "description": brief_hint or "Randomised depth-first maze (agent call failed).",
+                "description": brief_hint
+                or "Randomised depth-first maze (agent call failed).",
                 "structural_rules": [],
                 "target_open_ratio": 0.4,
             }
@@ -154,8 +194,13 @@ CONSTRAINTS:
 
     def _populate(self, terrain: list[bytearray]) -> Scene:
         spawn = random_open_cell(terrain, self._rng)
-        key = random_open_cell(terrain, self._rng, exclude=[spawn],
-                               anchor=spawn, min_distance=self.min_key_distance)
+        key = random_open_cell(
+            terrain,
+            self._rng,
+            exclude=[spawn],
+            anchor=spawn,
+            min_distance=self.min_key_distance,
+        )
         return Scene(
             width=self.side_length,
             height=self.side_length,

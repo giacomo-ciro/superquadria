@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-resonant-observatory.json",
+  "world": "worlds/the-resonant-observatory.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 17,

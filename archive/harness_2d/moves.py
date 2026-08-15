@@ -25,8 +25,16 @@ class Direction(Enum):
     @classmethod
     def parse(cls, token: str) -> "Direction":
         key = str(token).strip().upper()
-        aliases = {"U": "UP", "D": "DOWN", "L": "LEFT", "R": "RIGHT",
-                   "NORTH": "UP", "SOUTH": "DOWN", "WEST": "LEFT", "EAST": "RIGHT"}
+        aliases = {
+            "U": "UP",
+            "D": "DOWN",
+            "L": "LEFT",
+            "R": "RIGHT",
+            "NORTH": "UP",
+            "SOUTH": "DOWN",
+            "WEST": "LEFT",
+            "EAST": "RIGHT",
+        }
         key = aliases.get(key, key)
         try:
             return cls[key]

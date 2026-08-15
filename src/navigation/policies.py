@@ -8,13 +8,12 @@ reachability graph the agent is forbidden.
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 
-import math
-
 from geometry import UP, Vec3, look_angles, look_vector
-from geometry.superquadrics import DOOR, LOCK, OBJECT
-from world.task import DEFAULT_REACH
+from geometry.superquadrics import DOOR, LOCK
+from world.task import DEFAULT_REACH, is_pickable
 
 from .memory import SpatialMemory
 from .moves import MOVE, PICK, PLACE, Action, Trajectory
@@ -61,18 +60,21 @@ class Policy(ABC):
 
 
 class ManualPolicy(Policy):
-    """First-person flight: WASD horizontally, Space/Shift vertically, mouse look, E interact.
+    """First-person flight: WASD horizontally, Space/Shift vertically, mouse look,
+    E interact.
 
-    Returns None until a movement/interact key is pressed rather than waiting for one, so the
-    renderer keeps stepping Ursina between polls. Mouse look is applied on every
-    poll — independently of movement, which is the whole point of it — by writing
-    straight into the player's look direction.
+    Returns None until a movement/interact key is pressed rather than waiting for
+    one, so the renderer keeps stepping Ursina between polls. Mouse look is applied
+    on every poll — independently of movement, which is the whole point of it — by
+    writing straight into the player's look direction.
     """
 
     name = "manual"
     main_thread_only = True
 
-    def __init__(self, renderer, scene, *, speed: float = 12.0, sensitivity: float = 40.0):
+    def __init__(
+        self, renderer, scene, *, speed: float = 12.0, sensitivity: float = 40.0
+    ):
         self.renderer = renderer
         self.scene = scene
         self.speed = speed
@@ -99,7 +101,6 @@ class ManualPolicy(Policy):
         if "e" in renderer.pending_keys:
             player_pos = self.scene.player.position
             if not self.scene.player.carrying:
-                from world.task import is_pickable
                 # Find nearest pickable object/furniture within reach
                 best_obj, best_d = None, math.inf
                 for prim in self.scene.primitives:
@@ -108,7 +109,9 @@ class ManualPolicy(Policy):
                         if d < best_d:
                             best_obj, best_d = prim, d
                 if best_obj is not None and best_d <= DEFAULT_REACH:
-                    return Trajectory([Action(type=PICK, target=best_obj.position)], steer=False)
+                    return Trajectory(
+                        [Action(type=PICK, target=best_obj.position)], steer=False
+                    )
             else:
                 # Place on door/lock if near, otherwise place in front of player
                 door_or_lock = None
@@ -118,7 +121,9 @@ class ManualPolicy(Policy):
                             door_or_lock = prim
                             break
                 if door_or_lock is not None:
-                    return Trajectory([Action(type=PLACE, target=door_or_lock.position)], steer=False)
+                    return Trajectory(
+                        [Action(type=PLACE, target=door_or_lock.position)], steer=False
+                    )
                 drop_pos = player_pos + self.scene.player.forward * 1.5
                 return Trajectory([Action(type=PLACE, target=drop_pos)], steer=False)
 
@@ -126,7 +131,9 @@ class ManualPolicy(Policy):
         if direction == Vec3(0.0, 0.0, 0.0):
             return None
         step = direction.normalized() * (self.speed * max(1e-3, renderer.dt))
-        return Trajectory([Action(type=MOVE, target=self.scene.player.position + step)], steer=False)
+        return Trajectory(
+            [Action(type=MOVE, target=self.scene.player.position + step)], steer=False
+        )
 
     def _movement_vector(self) -> Vec3:
         held = self.renderer.held

@@ -71,13 +71,19 @@ class PygameRenderer:
 
         pygame.init()
         pygame.display.set_caption("maze harness")
-        self._reveal_rect = pygame.Rect(0, 0, 0, 0)  # positioned for real by the first _blit_sidebar()
+        self._reveal_rect = pygame.Rect(
+            0, 0, 0, 0
+        )  # positioned for real by the first _blit_sidebar()
         self.font = pygame.font.SysFont("dejavusansmono,monospace", 14)
         self.font_big = pygame.font.SysFont("dejavusansmono,monospace", 20, bold=True)
         self.font_small = pygame.font.SysFont("dejavusansmono,monospace", 12)
         description = " ".join(str(scene.meta.get("description") or "").split())
         subtitle_lines = self._wrap(description, self.font_small, sidebar - 28)
-        self.min_window_h = self.MIN_WINDOW_H + max(0, len(subtitle_lines) - self.SUBTITLE_LINES) * self.SUBTITLE_LINE_HEIGHT
+        self.min_window_h = (
+            self.MIN_WINDOW_H
+            + max(0, len(subtitle_lines) - self.SUBTITLE_LINES)
+            * self.SUBTITLE_LINE_HEIGHT
+        )
         initial_map_px = (scene.width * cell, scene.height * cell)
         self._resize((initial_map_px[0] + sidebar, initial_map_px[1]))
         self.clock = pygame.time.Clock()
@@ -108,16 +114,25 @@ class PygameRenderer:
         self.sidebar_x0 = width - self.sidebar
 
         available = (width - self.sidebar, height)
-        self.cell = min(available[0] / self.scene_width, available[1] / self.scene_height)
-        self.map_px = (round(self.scene_width * self.cell), round(self.scene_height * self.cell))
-        self.map_offset = ((available[0] - self.map_px[0]) // 2,
-                            (available[1] - self.map_px[1]) // 2)
+        self.cell = min(
+            available[0] / self.scene_width, available[1] / self.scene_height
+        )
+        self.map_px = (
+            round(self.scene_width * self.cell),
+            round(self.scene_height * self.cell),
+        )
+        self.map_offset = (
+            (available[0] - self.map_px[0]) // 2,
+            (available[1] - self.map_px[1]) // 2,
+        )
 
         self.screen = self.pygame.display.set_mode(self.size, self.pygame.RESIZABLE)
 
     # ------------------------------------------------------------------- draw
 
-    def draw(self, scene: Scene, state: State, memory: FogMemory | None, info: dict) -> bool:
+    def draw(
+        self, scene: Scene, state: State, memory: FogMemory | None, info: dict
+    ) -> bool:
         pygame = self.pygame
         self.pending_keys = set()
         for event in pygame.event.get():
@@ -149,7 +164,11 @@ class PygameRenderer:
         self.screen.blit(surface, self.map_offset)
 
         # Key: always in the god view, otherwise only once it has been seen.
-        key_pos = scene.key.position if self.reveal else (memory.key_position if memory else None)
+        key_pos = (
+            scene.key.position
+            if self.reveal
+            else (memory.key_position if memory else None)
+        )
         if key_pos is not None:
             self._cell_rect(key_pos, PALETTE[Tile.KEY], inset=1)
         self._cell_rect(scene.player.position, PALETTE[Tile.PLAYER])
@@ -157,8 +176,12 @@ class PygameRenderer:
         # Outline of the 10x10 window the agent actually observes.
         origin, span = state.view_origin, len(state.grid)
         ox, oy = self.map_offset
-        rect = pygame.Rect(ox + round(origin.col * self.cell), oy + round(origin.row * self.cell),
-                           round(span * self.cell), round(span * self.cell))
+        rect = pygame.Rect(
+            ox + round(origin.col * self.cell),
+            oy + round(origin.row * self.cell),
+            round(span * self.cell),
+            round(span * self.cell),
+        )
         pygame.draw.rect(self.screen, VIEWBOX, rect, 1)
 
     def _paint_tiles(self, scene: Scene, memory: FogMemory | None) -> None:
@@ -170,8 +193,12 @@ class PygameRenderer:
 
     def _cell_rect(self, pos: Vector2D, colour, inset: int = 0) -> None:
         ox, oy = self.map_offset
-        rect = self.pygame.Rect(ox + round(pos.col * self.cell) - inset, oy + round(pos.row * self.cell) - inset,
-                                round(self.cell) + 2 * inset, round(self.cell) + 2 * inset)
+        rect = self.pygame.Rect(
+            ox + round(pos.col * self.cell) - inset,
+            oy + round(pos.row * self.cell) - inset,
+            round(self.cell) + 2 * inset,
+            round(self.cell) + 2 * inset,
+        )
         self.pygame.draw.rect(self.screen, colour, rect)
 
     @staticmethod
@@ -206,11 +233,14 @@ class PygameRenderer:
             lines.append(current)
         return lines
 
-    def _blit_sidebar(self, scene: Scene, state: State, memory: FogMemory | None,
-                      info: dict) -> None:
+    def _blit_sidebar(
+        self, scene: Scene, state: State, memory: FogMemory | None, info: dict
+    ) -> None:
         pygame = self.pygame
         x0 = self.sidebar_x0
-        pygame.draw.rect(self.screen, PANEL, pygame.Rect(x0, 0, self.size[0] - x0, self.size[1]))
+        pygame.draw.rect(
+            self.screen, PANEL, pygame.Rect(x0, 0, self.size[0] - x0, self.size[1])
+        )
         x = x0 + 14
         y = 14
 
@@ -239,9 +269,16 @@ class PygameRenderer:
         fill = ACCENT if self.reveal else (34, 38, 46)
         text_colour = BACKGROUND if self.reveal else MUTED
         pygame.draw.rect(self.screen, fill, self._reveal_rect, border_radius=4)
-        label = self.font.render(f"god view: {'ON' if self.reveal else 'off'}", True, text_colour)
-        self.screen.blit(label, (self._reveal_rect.centerx - label.get_width() // 2,
-                                  self._reveal_rect.centery - label.get_height() // 2))
+        label = self.font.render(
+            f"god view: {'ON' if self.reveal else 'off'}", True, text_colour
+        )
+        self.screen.blit(
+            label,
+            (
+                self._reveal_rect.centerx - label.get_width() // 2,
+                self._reveal_rect.centery - label.get_height() // 2,
+            ),
+        )
         y += self._reveal_rect.height + 10
 
         line(f"policy     {info.get('policy', '—')}", MUTED)
@@ -255,7 +292,9 @@ class PygameRenderer:
         line(f"phase      {phase}", MUTED)
         y += 8
         budget = info["max_steps"]
-        line(f"step       {info['steps']} / {'∞' if budget == float('inf') else budget}")
+        line(
+            f"step       {info['steps']} / {'∞' if budget == float('inf') else budget}"
+        )
         calls = "n/a" if info.get("policy") == "manual" else info["calls"]
         line(f"agent call {calls}")
         line(f"collisions {info['collisions']}")
@@ -267,15 +306,22 @@ class PygameRenderer:
         y += 10
 
         # Legend.
-        for label, colour in (("you", PALETTE[Tile.PLAYER]), ("key", PALETTE[Tile.KEY]),
-                              ("floor", PALETTE[Tile.EMPTY]), ("wall", PALETTE[Tile.WALL]),
-                              ("unseen", PALETTE[Tile.UNKNOWN])):
+        for label, colour in (
+            ("you", PALETTE[Tile.PLAYER]),
+            ("key", PALETTE[Tile.KEY]),
+            ("floor", PALETTE[Tile.EMPTY]),
+            ("wall", PALETTE[Tile.WALL]),
+            ("unseen", PALETTE[Tile.UNKNOWN]),
+        ):
             pygame.draw.rect(self.screen, colour, pygame.Rect(x, y + 3, 10, 10))
             self.screen.blit(self.font.render(label, True, MUTED), (x + 18, y))
             y += 16
         y += 8
         span = len(state.grid)
-        self.screen.blit(self.font.render(f"yellow box = agent's {span}x{span} view", True, MUTED), (x, y))
+        self.screen.blit(
+            self.font.render(f"yellow box = agent's {span}x{span} view", True, MUTED),
+            (x, y),
+        )
         if info.get("phase") in ("idle", "replaying", "paused", "done"):
             y += 20
             self.screen.blit(self.font.render("SPACE play/pause", True, ACCENT), (x, y))

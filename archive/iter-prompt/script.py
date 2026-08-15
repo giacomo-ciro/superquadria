@@ -1,20 +1,18 @@
 """Isolated single-room generation test harness for prompt and schema iteration.
 
 Usage:
-    uv run python iter-prompt/run.py                 # run with codex agent, save world, & 3D render
-    uv run python iter-prompt/run.py --offline       # procedural fallback (no agent calls)
+    uv run python iter-prompt/run.py             # codex agent, save world, & 3D render
+    uv run python iter-prompt/run.py --offline   # procedural fallback (no agent calls)
     uv run python iter-prompt/run.py --concept guitar
-    uv run python iter-prompt/run.py --replay        # pick from saved worlds and inspect
-    uv run python iter-prompt/run.py --no-render     # prompt & parse test only
+    uv run python iter-prompt/run.py --replay    # pick from saved worlds and inspect
+    uv run python iter-prompt/run.py --no-render # prompt & parse test only
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import math
-import os
 import random
 import re
 import sys
@@ -37,30 +35,25 @@ if str(SRC_DIR) not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(1, str(REPO_ROOT))
 
-from prompts.room import room_prompt
+from engine.pipeline_log import PipelineLogger  # noqa: E402
 
 # Import harness modules
-from agents import ClaudeTmuxAgent, CodexTmuxAgent, TmuxAgent
-from agents.base import Agent, AgentError
-from engine.config import load_config
-from engine.pipeline_log import PipelineLogger
-from geometry import FORWARD, Vec3, rotation_matrix
-from geometry.superquadrics import (
-    DOOR,
-    LOCK,
-    OBJECT,
-    OBSTACLE,
-    PORTAL,
+from agents import ClaudeTmuxAgent, CodexTmuxAgent, TmuxAgent  # noqa: E402
+from agents.base import Agent, AgentError  # noqa: E402
+from engine.config import load_config  # noqa: E402
+from geometry import FORWARD, Vec3, rotation_matrix  # noqa: E402
+from geometry.superquadrics import (  # noqa: E402
     Sensor,
     Superquadric,
     SuperquadricHandler,
 )
-from navigation.policies import ManualPolicy
-from navigation.state import State
-from world import layout as layout_module
-from world import shell as shell_module
-from world import task as task_module
-from world.generation import (
+from navigation.policies import ManualPolicy  # noqa: E402
+from navigation.state import State  # noqa: E402
+from prompts.room import room_prompt  # noqa: E402
+from world import layout as layout_module  # noqa: E402
+from world import shell as shell_module  # noqa: E402
+from world import task as task_module  # noqa: E402
+from world.generation import (  # noqa: E402
     ROOM_SCHEMA,
     _aabb_inside,
     _aabb_overlaps,
@@ -69,9 +62,8 @@ from world.generation import (
     _procedural_room,
     _room_reachable,
 )
-from world.layout import Door, Layout, Room, WorldConfig
-from world.scene import Player, Scene
-
+from world.layout import Door, Layout, Room, WorldConfig  # noqa: E402
+from world.scene import Player, Scene  # noqa: E402
 
 CONFIG_PATH = REPO_ROOT / "configs/3d.yaml"
 AGENTS = {"claude": ClaudeTmuxAgent, "codex": CodexTmuxAgent}
@@ -86,7 +78,10 @@ def build_sample_layout(
     *,
     room_id: str = "study",
     room_name: str = "The Scholar's Study",
-    style: str = "A scholarly Victorian study with dark walnut bookshelves, brass instruments, and reading furniture.",
+    style: str = (
+        "A scholarly Victorian study with dark walnut bookshelves, "
+        "brass instruments, and reading furniture."
+    ),
     key_concept: str = "telescope",
     wall_color: tuple[float, float, float] = (0.78, 0.74, 0.70),
     floor_color: tuple[float, float, float] = (0.38, 0.28, 0.20),
@@ -127,8 +122,11 @@ def instantiate(payload: dict, origin: Vec3, interior) -> list[Superquadric]:
     this harness exists to hack on the payload shape, and it should be able to
     diverge from src/ mid-iteration without breaking the real pipeline.
     """
-    objects = {str(obj["id"]): obj.get("primitives") or []
-               for obj in payload.get("objects") or [] if obj.get("id")}
+    objects = {
+        str(obj["id"]): obj.get("primitives") or []
+        for obj in payload.get("objects") or []
+        if obj.get("id")
+    }
     instantiated: list[Superquadric] = []
     counts: dict[str, int] = {}
 
@@ -140,8 +138,12 @@ def instantiate(payload: dict, origin: Vec3, interior) -> list[Superquadric]:
             continue
         try:
             asm_pos = Vec3.parse(placement.get("position", [0.0, 0.0, 0.0]))
-            asm_rot = tuple(float(a) % 360.0 for a in
-                            Vec3.parse(placement.get("rotation", [0.0, 0.0, 0.0])).as_tuple())
+            asm_rot = tuple(
+                float(a) % 360.0
+                for a in Vec3.parse(
+                    placement.get("rotation", [0.0, 0.0, 0.0])
+                ).as_tuple()
+            )
             mult = float(placement.get("scale", 1.0))
         except (ValueError, TypeError, IndexError) as exc:
             print(f"  [X] Rejected placement #{idx} '{object_id}': {exc}")
@@ -155,9 +157,18 @@ def instantiate(payload: dict, origin: Vec3, interior) -> list[Superquadric]:
         r_asm = rotation_matrix(asm_rot)
         for part_idx, item in enumerate(primitives):
             try:
-                instantiated.append(_parse_assembly_primitive(
-                    item, label, asm_pos, r_asm, origin, len(instantiated), interior,
-                    scale_mult=mult))
+                instantiated.append(
+                    _parse_assembly_primitive(
+                        item,
+                        label,
+                        asm_pos,
+                        r_asm,
+                        origin,
+                        len(instantiated),
+                        interior,
+                        scale_mult=mult,
+                    )
+                )
             except (ValueError, KeyError, TypeError, IndexError) as exc:
                 print(f"  [X] Rejected part #{part_idx} of '{label}': {exc}")
     return instantiated
@@ -173,7 +184,8 @@ def generate_single_room_furniture(
     brief: str | None = None,
     log: PipelineLogger | None = None,
 ) -> tuple[list[Superquadric], dict, str]:
-    """Generates and validates furniture for a single room using iter-prompt's room_prompt."""
+    """Generates and validates furniture for a single room using
+    iter-prompt's room_prompt."""
     interior = room.interior(cfg)
     (x0, y0, z0), (x1, y1, z1) = interior
     origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
@@ -227,18 +239,29 @@ def generate_single_room_furniture(
     for prim in instantiated:
         lo, hi = prim.aabb()
         if not _aabb_inside(lo, hi, interior):
-            print(f"  [X] Rejected part of '{prim.assembly}': outside room interior bounds")
+            print(
+                f"  [X] Rejected part of '{prim.assembly}': "
+                "outside room interior bounds"
+            )
             rejected_count += 1
             continue
         if any(_aabb_overlaps(lo, hi, *clearance) for clearance in clearances):
-            print(f"  [X] Rejected part of '{prim.assembly}': overlaps doorway clearance")
+            print(
+                f"  [X] Rejected part of '{prim.assembly}': overlaps doorway clearance"
+            )
             rejected_count += 1
             continue
 
         validated.append(prim)
-        print(f"  [v] Accepted #{len(validated)-1} '{prim.assembly}' scale={prim.scale} pos={prim.position}")
+        print(
+            f"  [v] Accepted #{len(validated) - 1} '{prim.assembly}' "
+            f"scale={prim.scale} pos={prim.position}"
+        )
 
-    print(f"\n[*] Total validated primitives: {len(validated)} (rejected: {rejected_count})")
+    print(
+        f"\n[*] Total validated primitives: {len(validated)} "
+        f"(rejected: {rejected_count})"
+    )
 
     # Reachability flood test
     is_reachable = _room_reachable(
@@ -250,7 +273,10 @@ def generate_single_room_furniture(
         move_increment=0.5,
     )
     if not is_reachable:
-        print("[!] Warning: Reachability flood test failed! Doorways are blocked by furniture.")
+        print(
+            "[!] Warning: Reachability flood test failed! "
+            "Doorways are blocked by furniture."
+        )
     else:
         print("[+] Reachability check passed: all doorways are reachable.")
 
@@ -284,8 +310,14 @@ def assemble_single_room_scene(
         origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
         key_payload = {
             "objects": [_procedural_object(room.key_concept)],
-            "placements": [{"object": room.key_concept, "position": [0.0, 0.0, 0.0],
-                            "rotation": [0.0, 0.0, 0.0], "scale": 1.0}],
+            "placements": [
+                {
+                    "object": room.key_concept,
+                    "position": [0.0, 0.0, 0.0],
+                    "rotation": [0.0, 0.0, 0.0],
+                    "scale": 1.0,
+                }
+            ],
         }
         for p in instantiate(key_payload, origin, interior):
             furniture.append(p)
@@ -294,13 +326,19 @@ def assemble_single_room_scene(
     # Identify key assembly
     key_orig_name = None
     for name in assemblies:
-        if room.key_concept.lower() in name.lower() or name.lower() in room.key_concept.lower():
+        if (
+            room.key_concept.lower() in name.lower()
+            or name.lower() in room.key_concept.lower()
+        ):
             key_orig_name = name
             break
     if key_orig_name is None:
         key_orig_name = next(iter(assemblies))
 
-    print(f"[*] Identified key assembly matching concept '{room.key_concept}': '{key_orig_name}'")
+    print(
+        f"[*] Identified key assembly matching concept "
+        f"'{room.key_concept}': '{key_orig_name}'"
+    )
 
     # Anonymize assembly labels uniquely: assembly-0, assembly-1, ...
     orig_names = list(assemblies.keys())
@@ -382,7 +420,9 @@ def list_saved_worlds() -> list[Path]:
     """Returns all saved json worlds sorted newest first."""
     if not WORLDS_DIR.exists():
         return []
-    return sorted(WORLDS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return sorted(
+        WORLDS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
 
 
 def replay_saved_world(
@@ -412,7 +452,10 @@ def replay_saved_world(
             print(f"[replay] Could not find world: {target_path}")
             return 1
     else:
-        print(f"\n[replay] {len(saved_worlds)} saved room world(s) available under {WORLDS_DIR}/:")
+        print(
+            f"\n[replay] {len(saved_worlds)} saved room world(s) "
+            f"available under {WORLDS_DIR}/:"
+        )
         for idx, path in enumerate(saved_worlds, 1):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
@@ -421,7 +464,10 @@ def replay_saved_world(
                 concept = "?"
                 for t in data.get("meta", {}).get("task", {}).values():
                     concept = t.get("key_concept", concept)
-                print(f"  {idx:>2}. {path.name:<45} [{theme} | key: {concept} | {prims_count} prims]")
+                print(
+                    f"  {idx:>2}. {path.name:<45} "
+                    f"[{theme} | key: {concept} | {prims_count} prims]"
+                )
             except Exception:
                 print(f"  {idx:>2}. {path.name}")
 
@@ -438,14 +484,19 @@ def replay_saved_world(
 
     print(f"\n[*] Loading scene from {selected_path}...")
     scene = Scene.load(selected_path, collision_resolution=8)
-    print(f"[+] Loaded {len(scene.primitives)} primitives. Theme: {scene.meta.get('theme')}")
+    print(
+        f"[+] Loaded {len(scene.primitives)} primitives. "
+        f"Theme: {scene.meta.get('theme')}"
+    )
 
     if not no_render:
         inspect_scene_interactively(scene, sensor, mesh_resolution=mesh_resolution)
     return 0
 
 
-def inspect_scene_interactively(scene: Scene, sensor: Sensor, mesh_resolution: int = 16) -> None:
+def inspect_scene_interactively(
+    scene: Scene, sensor: Sensor, mesh_resolution: int = 16
+) -> None:
     """Launches the Ursina renderer for visual inspection."""
     from engine.render import UrsinaRenderer
 
@@ -502,18 +553,72 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Isolated room generation and prompt iteration harness.",
     )
-    parser.add_argument("--replay", nargs="?", const=True, default=False, help="Replay/inspect a previously saved world from iter-prompt/worlds/")
-    parser.add_argument("--offline", action="store_true", help="Procedural generation (no LLM calls)")
-    parser.add_argument("--agent", choices=["codex", "claude"], default=None, help="Agent CLI to use (default from config)")
-    parser.add_argument("--model", type=str, default=None, help="Override agent model name")
-    parser.add_argument("--effort", type=str, default=None, help="Override agent effort level (low/medium/high/xhigh/max)")
-    parser.add_argument("--concept", type=str, default="telescope", help="Key concept object (default: telescope)")
-    parser.add_argument("--room-name", type=str, default="The Scholar's Study", help="Name of the test room")
-    parser.add_argument("--style", type=str, default="A scholarly Victorian study with dark walnut bookshelves, brass instruments, and reading furniture.", help="Room furnishing style brief")
-    parser.add_argument("--size", type=int, default=4, help="Room size in grid cells (default: 4 -> 16m x 16m)")
-    parser.add_argument("--no-render", action="store_true", help="Do not open 3D Ursina window (headless / prompt debug)")
-    parser.add_argument("--save-world", type=str, default=None, help="Explicit path to save generated world JSON")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for procedural elements")
+    parser.add_argument(
+        "--replay",
+        nargs="?",
+        const=True,
+        default=False,
+        help="Replay/inspect a previously saved world from iter-prompt/worlds/",
+    )
+    parser.add_argument(
+        "--offline", action="store_true", help="Procedural generation (no LLM calls)"
+    )
+    parser.add_argument(
+        "--agent",
+        choices=["codex", "claude"],
+        default=None,
+        help="Agent CLI to use (default from config)",
+    )
+    parser.add_argument(
+        "--model", type=str, default=None, help="Override agent model name"
+    )
+    parser.add_argument(
+        "--effort",
+        type=str,
+        default=None,
+        help="Override agent effort level (low/medium/high/xhigh/max)",
+    )
+    parser.add_argument(
+        "--concept",
+        type=str,
+        default="telescope",
+        help="Key concept object (default: telescope)",
+    )
+    parser.add_argument(
+        "--room-name",
+        type=str,
+        default="The Scholar's Study",
+        help="Name of the test room",
+    )
+    parser.add_argument(
+        "--style",
+        type=str,
+        default=(
+            "A scholarly Victorian study with dark walnut bookshelves, "
+            "brass instruments, and reading furniture."
+        ),
+        help="Room furnishing style brief",
+    )
+    parser.add_argument(
+        "--size",
+        type=int,
+        default=4,
+        help="Room size in grid cells (default: 4 -> 16m x 16m)",
+    )
+    parser.add_argument(
+        "--no-render",
+        action="store_true",
+        help="Do not open 3D Ursina window (headless / prompt debug)",
+    )
+    parser.add_argument(
+        "--save-world",
+        type=str,
+        default=None,
+        help="Explicit path to save generated world JSON",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=42, help="Random seed for procedural elements"
+    )
 
     # Support 'replay' positional argument if passed (e.g. `run.py replay`)
     if argv is None:
@@ -577,7 +682,9 @@ def main(argv: list[str] | None = None) -> int:
         model = args.model or config.agent.model
         effort = args.effort or config.agent.effort
         binary = config.agent.binary
-        print(f"[*] Initializing {agent_name} agent (model={model}, effort={effort})...")
+        print(
+            f"[*] Initializing {agent_name} agent (model={model}, effort={effort})..."
+        )
         agent = agent_cls(
             model=model,
             binary=binary,
@@ -604,7 +711,7 @@ def main(argv: list[str] | None = None) -> int:
     scene = assemble_single_room_scene(layout, furniture, world_cfg, rng, source=source)
 
     # Automatically save generated world under iter-prompt/worlds/
-    saved_path = save_room_world(scene, args.room_name, args.concept, source)
+    save_room_world(scene, args.room_name, args.concept, source)
     if args.save_world:
         explicit_path = Path(args.save_world)
         scene.save(explicit_path)

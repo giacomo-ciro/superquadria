@@ -16,12 +16,11 @@ import sys
 import time
 from pathlib import Path
 
-from omegaconf import DictConfig
-
 from harness_common.agents.claude_tmux import ClaudeTmuxAgent
 from harness_common.agents.codex_tmux import CodexTmuxAgent
 from harness_common.agents.tmux_agent import TmuxAgent
 from harness_common.config import load_config
+from omegaconf import DictConfig
 
 from .engine import Episode, Replay, load_episode, save_episode
 from .generation import MazeGenerator
@@ -42,19 +41,34 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m harness_2d",
         description="Agent harness that generates a 2D maze and navigates it. "
-                     f"All other settings live in {CONFIG_PATH}.",
+        f"All other settings live in {CONFIG_PATH}.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    gen = sub.add_parser("generate", help="generate a maze and save it under worlds_2d/")
-    gen.add_argument("--offline", action="store_true", help="procedural maze, zero agent calls")
+    gen = sub.add_parser(
+        "generate", help="generate a maze and save it under worlds_2d/"
+    )
+    gen.add_argument(
+        "--offline", action="store_true", help="procedural maze, zero agent calls"
+    )
 
-    sub.add_parser("play", help="pick a saved maze under worlds_2d/ and play a fresh episode on it")
+    sub.add_parser(
+        "play", help="pick a saved maze under worlds_2d/ and play a fresh episode on it"
+    )
 
-    run = sub.add_parser("run", help="generate a maze under worlds_2d/, then immediately play it")
-    run.add_argument("--offline", action="store_true", help="procedural maze, zero agent calls")
+    run = sub.add_parser(
+        "run", help="generate a maze under worlds_2d/, then immediately play it"
+    )
+    run.add_argument(
+        "--offline", action="store_true", help="procedural maze, zero agent calls"
+    )
 
-    sub.add_parser("replay", help="pick a saved episode under episodes_2d/ and replay it in the pygame window")
+    sub.add_parser(
+        "replay",
+        help=(
+            "pick a saved episode under episodes_2d/ and replay it in the pygame window"
+        ),
+    )
 
     return parser
 
@@ -69,7 +83,9 @@ AGENTS = {"claude": ClaudeTmuxAgent, "codex": CodexTmuxAgent}
 
 def _make_agent(cfg: DictConfig, role: str = "agent") -> TmuxAgent:
     if cfg.name not in AGENTS:
-        raise RuntimeError(f"unknown agent {cfg.name!r} — expected one of {sorted(AGENTS)}")
+        raise RuntimeError(
+            f"unknown agent {cfg.name!r} — expected one of {sorted(AGENTS)}"
+        )
     return AGENTS[cfg.name](
         model=cfg.model,
         binary=cfg.binary,
@@ -97,12 +113,16 @@ def _generate(config: DictConfig, *, offline: bool) -> Scene:
 
     path = bfs_path(scene.terrain, scene.player.position, scene.key.position)
     if path is None:  # no connectivity repair: an ungenerous model can produce this
-        raise RuntimeError("generated maze is unsolvable — spawn and key are disconnected")
+        raise RuntimeError(
+            "generated maze is unsolvable — spawn and key are disconnected"
+        )
     scene.meta["shortest_path"] = len(path)
     scene.meta["generation_s"] = round(elapsed, 1)
-    print(f"[gen] {scene.height}x{scene.width} maze in {elapsed:.1f}s | "
-          f"spawn {scene.player.position} -> key {scene.key.position} | "
-          f"shortest path {len(path)} steps")
+    print(
+        f"[gen] {scene.height}x{scene.width} maze in {elapsed:.1f}s | "
+        f"spawn {scene.player.position} -> key {scene.key.position} | "
+        f"shortest path {len(path)} steps"
+    )
     return scene
 
 
@@ -113,8 +133,12 @@ def _make_policy(config: DictConfig, renderer) -> Policy:
     if ep.policy == "manual":
         return ManualPolicy(renderer)
     if ep.policy == "agent":
-        return ClaudeNavigator(_make_agent(config.agent, role="player"), step_budget=ep.max_steps)
-    raise RuntimeError(f"unknown episode.policy {ep.policy!r} — expected agent, frontier or manual")
+        return ClaudeNavigator(
+            _make_agent(config.agent, role="player"), step_budget=ep.max_steps
+        )
+    raise RuntimeError(
+        f"unknown episode.policy {ep.policy!r} — expected agent, frontier or manual"
+    )
 
 
 def _play(config: DictConfig, scene: Scene, maze: Path, out: Path) -> int:
@@ -148,13 +172,23 @@ def _play(config: DictConfig, scene: Scene, maze: Path, out: Path) -> int:
         save_episode(out, maze, result, extra)
 
         print(f"\n{result.summary()}")
-        print(f"optimal was {scene.meta.get('shortest_path', '?')} steps; episode written to {out}")
+        print(
+            f"optimal was {scene.meta.get('shortest_path', '?')} steps; "
+            f"episode written to {out}"
+        )
 
         print("[replay] window stays open — SPACE play/pause, close the window to quit")
-        Replay(scene, renderer, result, policy.name,
-               agent_model=getattr(agent, "model", None), agent_effort=getattr(agent, "effort", None),
-               memory=getattr(policy, "memory", None), step_delay=ep.step_delay,
-               view_size=ep.view_size).run()
+        Replay(
+            scene,
+            renderer,
+            result,
+            policy.name,
+            agent_model=getattr(agent, "model", None),
+            agent_effort=getattr(agent, "effort", None),
+            memory=getattr(policy, "memory", None),
+            step_delay=ep.step_delay,
+            view_size=ep.view_size,
+        ).run()
     finally:
         renderer.close()
 
@@ -187,8 +221,11 @@ def _replay(config: DictConfig) -> int:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             verdict = "solved" if payload.get("solved") else "not solved"
-            print(f"  {i:>2}. {path.name}  [{verdict}, {payload.get('steps', '?')} steps, "
-                  f"on {payload.get('maze', '?')}]")
+            print(
+                f"  {i:>2}. {path.name}  [{verdict}, "
+                f"{payload.get('steps', '?')} steps, "
+                f"on {payload.get('maze', '?')}]"
+            )
         except (OSError, json.JSONDecodeError):
             print(f"  {i:>2}. {path.name}")
     episode_path = _prompt_choice(episodes, "replay")
@@ -198,9 +235,16 @@ def _replay(config: DictConfig) -> int:
     try:
         print(f"[replay] {episode_path}: {result.summary()}")
         print("[replay] SPACE play/pause, close the window to quit")
-        Replay(scene, renderer, result, policy_name,
-               agent_model=agent_model, agent_effort=agent_effort,
-               step_delay=ep.step_delay, view_size=ep.view_size).run()
+        Replay(
+            scene,
+            renderer,
+            result,
+            policy_name,
+            agent_model=agent_model,
+            agent_effort=agent_effort,
+            step_delay=ep.step_delay,
+            view_size=ep.view_size,
+        ).run()
     finally:
         renderer.close()
 
@@ -259,7 +303,8 @@ def _dispatch(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         config = load_config(CONFIG_PATH)
-    except Exception as exc:  # malformed/missing config.yaml — fail with one clean line, not a traceback
+    except Exception as exc:
+        # malformed/missing config.yaml — fail with one clean line, not a traceback
         parser.error(f"{CONFIG_PATH}: {exc}")
     stamp = time.strftime("%Y%m%d-%H%M%S")
 
@@ -279,8 +324,10 @@ def _dispatch(argv: list[str] | None = None) -> int:
         if "shortest_path" not in scene.meta:
             path = bfs_path(scene.terrain, scene.player.position, scene.key.position)
             scene.meta["shortest_path"] = len(path) if path is not None else None
-        print(f"[play] {scene.height}x{scene.width}, "
-              f"spawn {scene.player.position} -> key {scene.key.position}")
+        print(
+            f"[play] {scene.height}x{scene.width}, "
+            f"spawn {scene.player.position} -> key {scene.key.position}"
+        )
         return _play(config, scene, maze_path, episode_path)
 
     if args.command == "run":

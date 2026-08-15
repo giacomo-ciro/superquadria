@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/procedural-20260815-075837.json",
+  "world": "worlds/procedural-20260815-075837.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 19,

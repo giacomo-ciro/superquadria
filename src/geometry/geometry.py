@@ -16,7 +16,9 @@ import math
 from dataclasses import dataclass
 
 #: 3x3 row-major rotation matrix.
-Matrix3 = tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]
+Matrix3 = tuple[
+    tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,9 +45,11 @@ class Vec3:
         return self.x * other.x + self.y * other.y + self.z * other.z
 
     def cross(self, other: "Vec3") -> "Vec3":
-        return Vec3(self.y * other.z - self.z * other.y,
-                    self.z * other.x - self.x * other.z,
-                    self.x * other.y - self.y * other.x)
+        return Vec3(
+            self.y * other.z - self.z * other.y,
+            self.z * other.x - self.x * other.z,
+            self.x * other.y - self.y * other.x,
+        )
 
     def length_squared(self) -> float:
         return self.x * self.x + self.y * self.y + self.z * self.z
@@ -61,7 +65,11 @@ class Vec3:
         raising in the middle of a trajectory.
         """
         length = self.length()
-        return Vec3(self.x / length, self.y / length, self.z / length) if length > 1e-12 else ZERO
+        return (
+            Vec3(self.x / length, self.y / length, self.z / length)
+            if length > 1e-12
+            else ZERO
+        )
 
     def distance_to(self, other: "Vec3") -> float:
         return (self - other).length()
@@ -75,7 +83,11 @@ class Vec3:
         `float()` first, so a vector built from ints persists as the same JSON
         as the one reloaded from it.
         """
-        return (round(float(self.x), digits), round(float(self.y), digits), round(float(self.z), digits))
+        return (
+            round(float(self.x), digits),
+            round(float(self.y), digits),
+            round(float(self.z), digits),
+        )
 
     @classmethod
     def parse(cls, values) -> "Vec3":
@@ -118,21 +130,27 @@ def rotation_matrix(rotation: tuple[float, float, float]) -> Matrix3:
 def apply(matrix: Matrix3, v: tuple[float, float, float]) -> tuple[float, float, float]:
     """`matrix @ v` — local direction to world direction."""
     x, y, z = v
-    return (matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
-            matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
-            matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z)
+    return (
+        matrix[0][0] * x + matrix[0][1] * y + matrix[0][2] * z,
+        matrix[1][0] * x + matrix[1][1] * y + matrix[1][2] * z,
+        matrix[2][0] * x + matrix[2][1] * y + matrix[2][2] * z,
+    )
 
 
-def apply_inverse(matrix: Matrix3, v: tuple[float, float, float]) -> tuple[float, float, float]:
+def apply_inverse(
+    matrix: Matrix3, v: tuple[float, float, float]
+) -> tuple[float, float, float]:
     """`matrix.T @ v` — world direction to local direction.
 
     The transpose is the inverse because `rotation_matrix` is orthonormal by
     construction; no general inversion is needed anywhere in the harness.
     """
     x, y, z = v
-    return (matrix[0][0] * x + matrix[1][0] * y + matrix[2][0] * z,
-            matrix[0][1] * x + matrix[1][1] * y + matrix[2][1] * z,
-            matrix[0][2] * x + matrix[1][2] * y + matrix[2][2] * z)
+    return (
+        matrix[0][0] * x + matrix[1][0] * y + matrix[2][0] * z,
+        matrix[0][1] * x + matrix[1][1] * y + matrix[2][1] * z,
+        matrix[0][2] * x + matrix[1][2] * y + matrix[2][2] * z,
+    )
 
 
 def look_angles(forward: Vec3) -> tuple[float, float]:

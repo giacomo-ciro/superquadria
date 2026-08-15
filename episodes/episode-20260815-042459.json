@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-rusted-deep.json",
+  "world": "worlds/the-rusted-deep.json",
   "solved": false,
   "reason": "closed by user",
   "calls": 29,

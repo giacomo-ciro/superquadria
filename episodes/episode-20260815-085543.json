@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-shattered-beacon.json",
+  "world": "worlds/the-shattered-beacon.json",
   "solved": false,
   "reason": "closed by user",
   "calls": 25,

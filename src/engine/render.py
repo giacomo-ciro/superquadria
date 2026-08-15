@@ -18,9 +18,18 @@ from dataclasses import dataclass
 from typing import Any
 
 from geometry import Vec3, basis, look_angles, look_vector
-from geometry.superquadrics import DOOR, LOCK, OBJECT, OBSTACLE, PORTAL, Sensor, Superquadric, build_mesh
+from geometry.superquadrics import (
+    DOOR,
+    LOCK,
+    OBSTACLE,
+    PORTAL,
+    Sensor,
+    Superquadric,
+    build_mesh,
+)
 from navigation.state import State
 from world.scene import Scene
+from world.task import is_pickable
 
 BACKGROUND = (0.05, 0.06, 0.08)
 #: The agent's own body, drawn only in third person. Unlit, so it reads as a
@@ -59,14 +68,15 @@ def _clock(seconds: float) -> str:
 
 
 def _wrap_text(text: str, width: int = 38, max_lines: int | None = None) -> list[str]:
-    """Wrap text to fixed width and limit line count with ellipsis if max_lines is set."""
+    """Wrap text to fixed width and limit line count with ellipsis if max_lines is
+    set."""
     if not text:
         return ["  (none)"]
     wrapped = textwrap.wrap(text.strip(), width=width)
     if max_lines is not None and len(wrapped) > max_lines:
         wrapped = wrapped[:max_lines]
         if len(wrapped[-1]) > width - 3:
-            wrapped[-1] = wrapped[-1][:width - 3] + "..."
+            wrapped[-1] = wrapped[-1][: width - 3] + "..."
         else:
             wrapped[-1] = wrapped[-1] + "..."
     return [f"  {line}" for line in wrapped]
@@ -90,7 +100,10 @@ def _matte_shader():
     from ursina import Vec3
     from ursina.shader import Shader
 
-    return Shader(name="matte_shader", language=Shader.GLSL, vertex="""
+    return Shader(
+        name="matte_shader",
+        language=Shader.GLSL,
+        vertex="""
 #version 120
 uniform mat4 p3d_ModelViewProjectionMatrix;
 uniform mat3 p3d_NormalMatrix;
@@ -105,7 +118,8 @@ void main() {
     view_normal = p3d_NormalMatrix * p3d_Normal;
     albedo = p3d_Color;
 }
-""", fragment="""
+""",
+        fragment="""
 #version 120
 uniform vec3 light_direction;
 uniform float ambient;
@@ -117,14 +131,19 @@ void main() {
     float light = ambient + (1.0 - ambient) * wrapped * wrapped;
     gl_FragColor = vec4(albedo.rgb * light, 1.0);
 }
-""", default_input={"light_direction": Vec3(*LIGHT_DIRECTION), "ambient": AMBIENT})
+""",
+        default_input={"light_direction": Vec3(*LIGHT_DIRECTION), "ambient": AMBIENT},
+    )
 
 
 def _unlit_shader():
     """Unlit shading over the mesh's vertex colours or entity color scale."""
     from ursina.shader import Shader
 
-    return Shader(name="unlit_shader", language=Shader.GLSL, vertex="""
+    return Shader(
+        name="unlit_shader",
+        language=Shader.GLSL,
+        vertex="""
 #version 120
 uniform mat4 p3d_ModelViewProjectionMatrix;
 attribute vec4 p3d_Vertex;
@@ -135,7 +154,8 @@ void main() {
     gl_Position = p3d_ModelViewProjectionMatrix * p3d_Vertex;
     vertex_color = p3d_Color;
 }
-""", fragment="""
+""",
+        fragment="""
 #version 120
 uniform vec4 p3d_ColorScale;
 varying vec4 vertex_color;
@@ -143,7 +163,8 @@ varying vec4 vertex_color;
 void main() {
     gl_FragColor = p3d_ColorScale * vertex_color;
 }
-""")
+""",
+    )
 
 
 @dataclass
@@ -200,12 +221,16 @@ def _find_walls_without_doors(scene: Scene) -> set[int]:
         w_y_max = p_pos[1] + p.scale[1]
 
         has_door = False
-        for (d_axis, d_coord, dh0, dh1, dy0, dy1) in door_openings:
+        for d_axis, d_coord, dh0, dh1, dy0, dy1 in door_openings:
             if d_axis != w_axis or abs(d_coord - w_coord) > 0.2:
                 continue
-            spans_door = (w_h_min <= dh0 + 0.1 and w_h_max >= dh1 - 0.1)
-            left_jamb = abs(w_h_max - dh0) < 0.2 and not (w_y_max <= dy0 - 0.1 or w_y_min >= dy1 + 0.1)
-            right_jamb = abs(w_h_min - dh1) < 0.2 and not (w_y_max <= dy0 - 0.1 or w_y_min >= dy1 + 0.1)
+            spans_door = w_h_min <= dh0 + 0.1 and w_h_max >= dh1 - 0.1
+            left_jamb = abs(w_h_max - dh0) < 0.2 and not (
+                w_y_max <= dy0 - 0.1 or w_y_min >= dy1 + 0.1
+            )
+            right_jamb = abs(w_h_min - dh1) < 0.2 and not (
+                w_y_max <= dy0 - 0.1 or w_y_min >= dy1 + 0.1
+            )
 
             if spans_door or left_jamb or right_jamb:
                 has_door = True
@@ -220,6 +245,7 @@ def _silence_engine_logs() -> None:
     """Mute noisy Panda3D C++ notify diagnostics and Ursina stdout logs."""
     try:
         import panda3d.core as p3d
+
         p3d.load_prc_file_data("", "notify-level fatal")
         p3d.load_prc_file_data("", "notify-level-glgsg fatal")
         p3d.load_prc_file_data("", "notify-level-display fatal")
@@ -233,7 +259,9 @@ def _silence_engine_logs() -> None:
 
     try:
         import sys
-        import ursina
+
+        import ursina  # noqa: F401
+
         for mod in list(sys.modules.values()):
             if mod and hasattr(mod, "print_info"):
                 mod.print_info = lambda *a, **k: None
@@ -247,13 +275,20 @@ class UrsinaRenderer:
     """Window onto an episode, first person or orbiting third person.
 
     All world primitives are rendered and the GPU handles visual culling and
-    occlusion; `visible_from()` decides only what the *agent* is told and what
+    occlusion; `Scene.visible` decides only what the *agent* is told and what
     the HUD reports. A shape vanishing because the sensor lost it would be a
     different game.
     """
 
-    def __init__(self, scene: Scene, *, sensor: Sensor, mesh_resolution: int = 16,
-                 size: tuple[int, int] = (1280, 720), mouse_look: bool = False):
+    def __init__(
+        self,
+        scene: Scene,
+        *,
+        sensor: Sensor,
+        mesh_resolution: int = 16,
+        size: tuple[int, int] = (1280, 720),
+        mouse_look: bool = False,
+    ):
         import io
         import sys
 
@@ -266,9 +301,15 @@ class UrsinaRenderer:
         sys.stdout = io.StringIO()
         try:
             #: `Ursina` is a singleton proxy, so a checker sees none of `ShowBase`.
-            self.app: Any = Ursina(title="superquadric harness", size=size, vsync=True,
-                                   development_mode=False, editor_ui_enabled=False, fullscreen=False,
-                                   show_ursina_splash=False)
+            self.app: Any = Ursina(
+                title="superquadric harness",
+                size=size,
+                vsync=True,
+                development_mode=False,
+                editor_ui_enabled=False,
+                fullscreen=False,
+                show_ursina_splash=False,
+            )
         finally:
             sys.stdout = old_stdout
 
@@ -292,6 +333,7 @@ class UrsinaRenderer:
 
         # Display a loading message on screen while building primitive meshes
         from ursina import destroy
+
         loading_text = Text(
             parent=camera.ui,
             text=f"Loading world ({len(scene.primitives)} primitives)...",
@@ -308,14 +350,24 @@ class UrsinaRenderer:
         for prim in scene.primitives:
             mesh = scene.primitives.mesh_data(prim.id, mesh_resolution)
             self.entities[prim.id] = Entity(
-                model=Mesh(vertices=mesh.vertices, triangles=mesh.triangles,
-                           normals=mesh.normals, colors=[color.rgba(*c) for c in mesh.colors]),
+                model=Mesh(
+                    vertices=mesh.vertices,
+                    triangles=mesh.triangles,
+                    normals=mesh.normals,
+                    colors=[color.rgba(*c) for c in mesh.colors],
+                ),
                 # Every primitive is shaded, objects and the lock included: pure
                 # colour with no lighting reads as a flat silhouette, and the
                 # whole task is comparing *shape*.
                 shader=self._matte_shader,
             )
-            self._entity_keys[prim.id] = (prim.position.as_tuple(), prim.rotation, prim.scale, prim.exponents, prim.color)
+            self._entity_keys[prim.id] = (
+                prim.position.as_tuple(),
+                prim.rotation,
+                prim.scale,
+                prim.exponents,
+                prim.color,
+            )
 
         destroy(loading_text)
 
@@ -332,13 +384,31 @@ class UrsinaRenderer:
         right_x = max(0.35, window.right.x - 0.46)
 
         self.show_hud = True
-        self.hud = Text(parent=camera.ui, text="", position=(left_x, 0.47), scale=0.65,
-                        color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
-        self.footer = Text(parent=camera.ui, text="", position=(left_x, -0.45), scale=0.65,
-                           color=color.rgba(0.55, 0.60, 0.68, 1.0), font="VeraMono.ttf")
+        self.hud = Text(
+            parent=camera.ui,
+            text="",
+            position=(left_x, 0.47),
+            scale=0.65,
+            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            font="VeraMono.ttf",
+        )
+        self.footer = Text(
+            parent=camera.ui,
+            text="",
+            position=(left_x, -0.45),
+            scale=0.65,
+            color=color.rgba(0.55, 0.60, 0.68, 1.0),
+            font="VeraMono.ttf",
+        )
         #: Move history, agent reasoning and actions in the right column.
-        self.moves = Text(parent=camera.ui, text="", position=(right_x, 0.47), scale=0.65,
-                          color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
+        self.moves = Text(
+            parent=camera.ui,
+            text="",
+            position=(right_x, 0.47),
+            scale=0.65,
+            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            font="VeraMono.ttf",
+        )
         #: Last text assigned to each panel — Ursina rebuilds glyph meshes on
         #: every `.text =`, so skipping the assignment when nothing changed
         #: (e.g. a paused replay redrawing the same frame) avoids paying for
@@ -346,14 +416,24 @@ class UrsinaRenderer:
         self._last_hud_text: str | None = None
         self._last_moves_text: str | None = None
         self._last_footer_text: str | None = None
-        self.crosshair = Text(parent=camera.ui, text="+", position=(0, 0), origin=(0, 0),
-                              scale=1.2, color=color.rgba(0.9, 0.9, 0.9, 0.5))
+        self.crosshair = Text(
+            parent=camera.ui,
+            text="+",
+            position=(0, 0),
+            origin=(0, 0),
+            scale=1.2,
+            color=color.rgba(0.9, 0.9, 0.9, 0.5),
+        )
         #: Ursina drops wheel events before `held_keys`, so the only way to see a
         #: scroll is an entity input hook.
         self._input_entity = Entity(input=self._on_input)
 
         self.theme = str(scene.meta.get("theme", scene.meta.get("source", "world")))
-        self.theme_description = str(scene.meta.get("description") or scene.meta.get("layout", {}).get("description") or "")
+        self.theme_description = str(
+            scene.meta.get("description")
+            or scene.meta.get("layout", {}).get("description")
+            or ""
+        )
         #: Whether first person flies by mouse — false for an agent episode and
         #: for replay, where the cursor stays free to click.
         self.mouse_look = mouse_look
@@ -365,7 +445,9 @@ class UrsinaRenderer:
         self._last_player_position = scene.player.position
         #: Third person opens framed on the agent inside the room.
         _, yaw = look_angles(scene.player.forward)
-        self.orbit = Orbit(pitch=15.0, yaw=yaw, distance=6.0, pivot=scene.player.position)
+        self.orbit = Orbit(
+            pitch=15.0, yaw=yaw, distance=6.0, pivot=scene.player.position
+        )
         self._max_orbit_distance = scene.bounds * 1.5
 
         self._walls_without_doors = _find_walls_without_doors(scene)
@@ -386,15 +468,28 @@ class UrsinaRenderer:
 
         mark = MARKS_BY_POLICY.get(policy_name) if policy_name else None
         if mark is None:
-            self.agent = Entity(model="sphere", scale=scene.player.radius * 2, enabled=self.third_person,  # pyright: ignore[reportArgumentType]
-                                shader=self._unlit_shader, color=color.rgba(*AGENT_COLOR))
+            self.agent = Entity(
+                model="sphere",
+                scale=scene.player.radius * 2,
+                enabled=self.third_person,  # pyright: ignore[reportArgumentType]
+                shader=self._unlit_shader,
+                color=color.rgba(*AGENT_COLOR),
+            )
         else:
             self.agent = Entity(
-                model=Mesh(vertices=mark.vertices, triangles=mark.triangles,
-                           normals=mark.normals, colors=[color.rgba(*c) for c in mark.colors]),
-                scale=scene.player.radius, enabled=self.third_person, shader=self._unlit_shader,  # pyright: ignore[reportArgumentType]
+                model=Mesh(
+                    vertices=mark.vertices,
+                    triangles=mark.triangles,
+                    normals=mark.normals,
+                    colors=[color.rgba(*c) for c in mark.colors],
+                ),
+                scale=scene.player.radius,
+                enabled=self.third_person,
+                shader=self._unlit_shader,  # pyright: ignore[reportArgumentType]
             )
-        self.carried_entity = Entity(parent=self.agent, enabled=False, shader=self._matte_shader)
+        self.carried_entity = Entity(
+            parent=self.agent, enabled=False, shader=self._matte_shader
+        )
 
     # ------------------------------------------------------------------- input
 
@@ -412,7 +507,9 @@ class UrsinaRenderer:
 
         if self.agent is None:
             self._build_agent(scene, info.get("policy"))
-        assert self.agent is not None and self.carried_entity is not None  # built just above
+        assert (
+            self.agent is not None and self.carried_entity is not None
+        )  # built just above
 
         self._last_player_position = scene.player.position
 
@@ -420,13 +517,24 @@ class UrsinaRenderer:
         for prim in scene.primitives:
             if prim.id not in self.entities:
                 from ursina import Entity, Mesh, color
+
                 mesh = scene.primitives.mesh_data(prim.id, self.mesh_resolution)
                 self.entities[prim.id] = Entity(
-                    model=Mesh(vertices=mesh.vertices, triangles=mesh.triangles,
-                               normals=mesh.normals, colors=[color.rgba(*c) for c in mesh.colors]),
+                    model=Mesh(
+                        vertices=mesh.vertices,
+                        triangles=mesh.triangles,
+                        normals=mesh.normals,
+                        colors=[color.rgba(*c) for c in mesh.colors],
+                    ),
                     shader=self._matte_shader,
                 )
-                self._entity_keys[prim.id] = (prim.position.as_tuple(), prim.rotation, prim.scale, prim.exponents, prim.color)
+                self._entity_keys[prim.id] = (
+                    prim.position.as_tuple(),
+                    prim.rotation,
+                    prim.scale,
+                    prim.exponents,
+                    prim.color,
+                )
 
         # Sync primitive entities with scene state and agent memory.
         # In Agent Mind mode (default), only primitives the agent has seen are drawn.
@@ -452,29 +560,46 @@ class UrsinaRenderer:
                 prim = scene.primitives.get(prim_id)
                 if prim.kind == PORTAL:
                     entity.enabled = False
-                elif self.third_person and (prim_id in self._walls_without_doors or "outer wall" in prim.assembly):
+                elif self.third_person and (
+                    prim_id in self._walls_without_doors
+                    or "outer wall" in prim.assembly
+                ):
                     entity.enabled = False
                 else:
                     entity.enabled = True
-                    geom_key = (prim.position.as_tuple(), prim.rotation, prim.scale, prim.exponents, prim.color)
+                    geom_key = (
+                        prim.position.as_tuple(),
+                        prim.rotation,
+                        prim.scale,
+                        prim.exponents,
+                        prim.color,
+                    )
                     if self._entity_keys.get(prim_id) != geom_key:
                         self._entity_keys[prim_id] = geom_key
                         from ursina import Mesh, color
+
                         mesh = scene.primitives.mesh_data(prim.id, self.mesh_resolution)
                         entity.model = Mesh(
-                            vertices=mesh.vertices, triangles=mesh.triangles,
-                            normals=mesh.normals, colors=[color.rgba(*c) for c in mesh.colors],
+                            vertices=mesh.vertices,
+                            triangles=mesh.triangles,
+                            normals=mesh.normals,
+                            colors=[color.rgba(*c) for c in mesh.colors],
                         )
 
         # Update carried object display
         carrying = scene.player.carrying
         if carrying:
             self.carried_entity.enabled = self.third_person
-            key = tuple((p.scale, p.exponents, p.color, p.position.as_tuple()) for p in carrying)
+            key = tuple(
+                (p.scale, p.exponents, p.color, p.position.as_tuple()) for p in carrying
+            )
             if key != self._carried_prim_key:
                 self._carried_prim_key = key
                 from ursina import Mesh, color
-                centroid = sum((p.position for p in carrying), Vec3(0.0, 0.0, 0.0)) * (1.0 / len(carrying))
+
+                centroid = sum((p.position for p in carrying), Vec3(0.0, 0.0, 0.0)) * (
+                    1.0 / len(carrying)
+                )
                 all_vertices = []
                 all_triangles = []
                 all_normals = []
@@ -484,21 +609,29 @@ class UrsinaRenderer:
                 for p in carrying:
                     rel_pos = p.position - centroid
                     local_prim = Superquadric(
-                        id=-1, kind=p.kind, assembly=p.assembly,
-                        position=rel_pos, rotation=p.rotation,
-                        scale=p.scale, exponents=p.exponents,
+                        id=-1,
+                        kind=p.kind,
+                        assembly=p.assembly,
+                        position=rel_pos,
+                        rotation=p.rotation,
+                        scale=p.scale,
+                        exponents=p.exponents,
                         color=p.color,
                     )
                     m = build_mesh(local_prim, self.mesh_resolution)
                     all_vertices.extend(m.vertices)
                     all_normals.extend(m.normals)
                     all_colors.extend(m.colors)
-                    all_triangles.extend((t[0] + v_offset, t[1] + v_offset, t[2] + v_offset) for t in m.triangles)
+                    all_triangles.extend(
+                        (t[0] + v_offset, t[1] + v_offset, t[2] + v_offset)
+                        for t in m.triangles
+                    )
                     v_offset += len(m.vertices)
                     max_radius = max(max_radius, rel_pos.length() + max(p.scale))
 
                 self.carried_entity.model = Mesh(
-                    vertices=all_vertices, triangles=all_triangles,
+                    vertices=all_vertices,
+                    triangles=all_triangles,
                     normals=all_normals,
                     colors=[color.rgba(*c) for c in all_colors],
                 )
@@ -516,6 +649,7 @@ class UrsinaRenderer:
             self._camera.position = scene.player.position.as_tuple()
             self._camera.rotation = (pitch, yaw, 0)
         from ursina import window
+
         left_x = window.left.x + 0.03
         right_x = max(0.35, window.right.x - 0.46)
         if self.hud.x != left_x:
@@ -544,7 +678,9 @@ class UrsinaRenderer:
             return False
 
         now = time.monotonic()
-        self.dt = min(0.1, now - self._last_frame)  # a stalled frame must not teleport anyone
+        self.dt = min(
+            0.1, now - self._last_frame
+        )  # a stalled frame must not teleport anyone
         self._last_frame = now
         self._collect_input()
         return not self._closed
@@ -568,7 +704,10 @@ class UrsinaRenderer:
 
         if self.third_person:
             self._drag_orbit()
-            self.mouse_delta = (0.0, 0.0)  # the camera consumed it; the agent gets nothing
+            self.mouse_delta = (
+                0.0,
+                0.0,
+            )  # the camera consumed it; the agent gets nothing
         elif self.mouse_look:
             velocity = self._mouse.velocity
             self.mouse_delta = (velocity[0], velocity[1])
@@ -583,8 +722,10 @@ class UrsinaRenderer:
             self._zoom(1 / ZOOM_STEP)
 
     def _zoom(self, factor: float) -> None:
-        self.orbit.distance = max(MIN_ORBIT_DISTANCE,
-                                  min(self._max_orbit_distance, self.orbit.distance * factor))
+        self.orbit.distance = max(
+            MIN_ORBIT_DISTANCE,
+            min(self._max_orbit_distance, self.orbit.distance * factor),
+        )
 
     def _drag_orbit(self) -> None:
         """Left drag rotates, right drag pans — the scene follows the cursor."""
@@ -647,14 +788,19 @@ class UrsinaRenderer:
         if state.room_description:
             lines.extend(_wrap_text(state.room_description, width=38, max_lines=4))
 
-        lines.extend([
-            "",
-            "SPATIAL POSE",
-            f" pos:  [{state.player_position.x:+5.1f}, {state.player_position.y:+5.1f}, {state.player_position.z:+5.1f}]",
-            f" look: [{state.forward.x:+5.2f}, {state.forward.y:+5.2f}, {state.forward.z:+5.2f}]",
-            "",
-            "PUZZLE TARGET (LOCK)",
-        ])
+        lines.extend(
+            [
+                "",
+                "SPATIAL POSE",
+                f" pos:  [{state.player_position.x:+5.1f}, "
+                f"{state.player_position.y:+5.1f}, "
+                f"{state.player_position.z:+5.1f}]",
+                f" look: [{state.forward.x:+5.2f}, {state.forward.y:+5.2f}, "
+                f"{state.forward.z:+5.2f}]",
+                "",
+                "PUZZLE TARGET (LOCK)",
+            ]
+        )
         if state.lock and "concept" in state.lock:
             lines.append(f" find:  {state.lock['concept']}")
         elif state.lock and "scale" in state.lock:
@@ -678,7 +824,7 @@ class UrsinaRenderer:
         lines.append("")
         lines.append("SENSOR & MEMORY")
         n_vis = len(state.visible)
-        n_obj = sum(1 for p in state.visible if p.kind == OBJECT)
+        n_obj = sum(1 for p in state.visible if is_pickable(p))
         n_lock = sum(1 for p in state.visible if p.kind in (LOCK, DOOR))
         details = []
         if n_obj:
@@ -696,13 +842,18 @@ class UrsinaRenderer:
         lines.append("")
         lines.append("BUDGETS & PROGRESS")
         max_dist = info.get("max_distance", 0)
-        dist_str = f"{info.get('distance', 0):.1f} / {'inf' if max_dist == float('inf') else f'{max_dist:.0f}'} m"
+        max_dist_str = "inf" if max_dist == float("inf") else f"{max_dist:.0f}"
+        dist_str = f"{info.get('distance', 0):.1f} / {max_dist_str} m"
         lines.append(f" distance:  {dist_str}")
         max_coll = info.get("max_collisions", 0)
-        coll_str = f"{info.get('collisions', 0)} / {'inf' if max_coll in (float('inf'), 0) else int(max_coll)}"
+        max_coll_str = "inf" if max_coll in (float("inf"), 0) else int(max_coll)
+        coll_str = f"{info.get('collisions', 0)} / {max_coll_str}"
         lines.append(f" collision: {coll_str}")
-        lines.append(f" rooms:     {info.get('rooms_cleared', 0)} / {info.get('rooms_total', 1)} cleared "
-                     f"({info.get('failed_attempts', 0)} failed)")
+        lines.append(
+            f" rooms:     {info.get('rooms_cleared', 0)} / "
+            f"{info.get('rooms_total', 1)} cleared "
+            f"({info.get('failed_attempts', 0)} failed)"
+        )
         replay_str = f" replay:    {info['replay']}" if info.get("replay") else ""
         lines.append(replay_str)
 
@@ -716,7 +867,8 @@ class UrsinaRenderer:
         """
         elapsed = f"run {_clock(info.get('elapsed_s', 0.0))}"
         max_calls = info.get("max_calls", 0)
-        call_str = f"{info.get('calls', 0)} / {'inf' if max_calls == float('inf') else int(max_calls)}"
+        max_calls_str = "inf" if max_calls == float("inf") else int(max_calls)
+        call_str = f"{info.get('calls', 0)} / {max_calls_str}"
         policy = info.get("policy", "-")
         model = info.get("agent_model")
         pol_str = f"{policy} ({model})" if model else policy
@@ -761,22 +913,50 @@ class UrsinaRenderer:
             if len(actions) > 8:
                 for act in actions[:7]:
                     status = act.get("status", "pending")
-                    icon = "[+]" if status == "done" else ("[>]" if status == "active" else ("[x]" if status == "failed" else "[ ]"))
+                    icon = (
+                        "[+]"
+                        if status == "done"
+                        else (
+                            "[>]"
+                            if status == "active"
+                            else ("[x]" if status == "failed" else "[ ]")
+                        )
+                    )
                     atype = act.get("type", "MOVE")
                     target = act.get("target", [0, 0, 0])
                     t_str = f"[{target[0]:+4.1f}, {target[1]:+4.1f}, {target[2]:+4.1f}]"
-                    tag = f" {act['info']}" if act.get("info") else (f" {act['dist']:.1f}m" if act.get("dist") else "")
-                    action_lines.append(f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}")
+                    tag = (
+                        f" {act['info']}"
+                        if act.get("info")
+                        else (f" {act['dist']:.1f}m" if act.get("dist") else "")
+                    )
+                    action_lines.append(
+                        f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}"
+                    )
                 action_lines.append(f"     ... {len(actions) - 7} more")
             else:
                 for act in actions:
                     status = act.get("status", "pending")
-                    icon = "[+]" if status == "done" else ("[>]" if status == "active" else ("[x]" if status == "failed" else "[ ]"))
+                    icon = (
+                        "[+]"
+                        if status == "done"
+                        else (
+                            "[>]"
+                            if status == "active"
+                            else ("[x]" if status == "failed" else "[ ]")
+                        )
+                    )
                     atype = act.get("type", "MOVE")
                     target = act.get("target", [0, 0, 0])
                     t_str = f"[{target[0]:+4.1f}, {target[1]:+4.1f}, {target[2]:+4.1f}]"
-                    tag = f" {act['info']}" if act.get("info") else (f" {act['dist']:.1f}m" if act.get("dist") else "")
-                    action_lines.append(f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}")
+                    tag = (
+                        f" {act['info']}"
+                        if act.get("info")
+                        else (f" {act['dist']:.1f}m" if act.get("dist") else "")
+                    )
+                    action_lines.append(
+                        f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}"
+                    )
         else:
             action_lines.append("  (no actions planned)")
         action_slots = _pad_lines(action_lines, 8)
@@ -788,7 +968,14 @@ class UrsinaRenderer:
             history_lines.append("  (no completed turns yet)")
         else:
             for row in history[-6:]:
-                history_lines.append(self._move_row(row["call"], row["gen_s"], f"{row['flown']}/{row['planned']}", row["result"]))
+                history_lines.append(
+                    self._move_row(
+                        row["call"],
+                        row["gen_s"],
+                        f"{row['flown']}/{row['planned']}",
+                        row["result"],
+                    )
+                )
         history_slots = _pad_lines(history_lines, 6)
 
         lines = [
@@ -808,9 +995,11 @@ class UrsinaRenderer:
         return "\n".join(lines)
 
     @staticmethod
-    def _move_row(call: int, gen_s: float, waypoints: str, result: str,
-                  *, pending: bool = False) -> str:
-        return f"{'>' if pending else ' '}{call:>2} {gen_s:>5.1f}s {waypoints:>5}  {result[:14]}"
+    def _move_row(
+        call: int, gen_s: float, waypoints: str, result: str, *, pending: bool = False
+    ) -> str:
+        marker = ">" if pending else " "
+        return f"{marker}{call:>2} {gen_s:>5.1f}s {waypoints:>5}  {result[:14]}"
 
     def _footer_text(self, info: dict) -> str:
         view_toggle = f"M {'god mode' if self.agent_mind else 'agent mode'}   "
@@ -818,15 +1007,25 @@ class UrsinaRenderer:
         speed_hint = f"+/- speed ({speed:.2f}x)"
         if self.third_person:
             if info.get("phase") in ("idle", "replaying", "paused", "done"):
-                return (f"SPACE play/pause   {speed_hint}   R restart   "
-                        f"LEFT-drag rotate   SCROLL zoom   {view_toggle}TAB toggle HUD   V first person   ESC quit")
-            return ("LEFT-drag rotate   RIGHT-drag pan   SCROLL zoom   "
-                    f"{view_toggle}TAB toggle HUD   V first person   ESC quit")
+                return (
+                    f"SPACE play/pause   {speed_hint}   R restart   "
+                    f"LEFT-drag rotate   SCROLL zoom   {view_toggle}"
+                    f"TAB toggle HUD   V first person   ESC quit"
+                )
+            return (
+                "LEFT-drag rotate   RIGHT-drag pan   SCROLL zoom   "
+                f"{view_toggle}TAB toggle HUD   V first person   ESC quit"
+            )
         if info.get("phase") in ("idle", "replaying", "paused", "done"):
-            return f"SPACE play/pause   {speed_hint}   R restart   {view_toggle}TAB toggle HUD   V third person   ESC quit"
+            return (
+                f"SPACE play/pause   {speed_hint}   R restart   {view_toggle}"
+                f"TAB toggle HUD   V third person   ESC quit"
+            )
         if info.get("policy") == "manual":
-            return ("WASD move   E interact   SPACE up   SHIFT down   "
-                    f"{view_toggle}TAB toggle HUD   V third person   ESC quit")
+            return (
+                "WASD move   E interact   SPACE up   SHIFT down   "
+                f"{view_toggle}TAB toggle HUD   V third person   ESC quit"
+            )
         return f"{view_toggle}TAB toggle HUD   V third person   ESC/close to quit"
 
     def release_mouse(self) -> None:

@@ -1,11 +1,11 @@
-"""`ClaudeTmuxAgent` — the `claude` CLI driven inside a persistent tmux session."""
+"""`Claude` — the `claude` CLI driven inside a persistent tmux session."""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 
-from .tmux_agent import TmuxAgent
+from .base import Agent
 
 #: Markers that mean "a turn is running". Two independent signals, because neither
 #: alone is enough — and see `_idle_confirmed`, because together they still aren't:
@@ -25,12 +25,12 @@ from .tmux_agent import TmuxAgent
 #: The remaining alternatives cover other harnesses' spinners, for parity with the
 #: firstmate reference regex.
 _BUSY_REGEX = re.compile(
-    r'(?im)esc (to )?interrupt|Working\.\.\.|Ctrl\+c:cancel|^\S +\w[\w\'’-]*…'
+    r"(?im)esc (to )?interrupt|Working\.\.\.|Ctrl\+c:cancel|^\S +\w[\w\'’-]*…"
 )
 
 
 @dataclass
-class ClaudeTmuxAgent(TmuxAgent):
+class Claude(Agent):
     """Drives the `claude` CLI interactively inside a persistent tmux session."""
 
     binary: str = "claude"

@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-orrery-cloister.json",
+  "world": "worlds/the-orrery-cloister.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 1,

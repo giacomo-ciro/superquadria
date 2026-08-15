@@ -11,7 +11,8 @@ from typing import Callable
 
 
 class Logger:
-    """Logs `[timestamp] [stage:substage]   message` with fixed-width column alignment."""
+    """Logs `[timestamp] [stage:substage]   message` with fixed-width column
+    alignment."""
 
     STAGE_WIDTH = 21
 
@@ -29,28 +30,11 @@ class Logger:
         """Return a logger scoped to a specific stage/pipeline."""
         return Logger(stage=stage, sink=self.sink)
 
-    # ------------------------------------------------ backward-compatible helpers
-    def start(self, step=None, message: str = "", stage: str | None = None) -> None:
-        prefix = f"{step}: " if step is not None and not str(step).isdigit() else ""
-        self.log(f"{prefix}{message}" if message else str(step), stage=stage)
-
-    def end(self, step=None, message: str = "", stage: str | None = None) -> None:
-        prefix = f"{step}: " if step is not None and not str(step).isdigit() else ""
-        self.log(f"{prefix}{message}" if message else str(step), stage=stage)
-
     def info(self, step=None, message: str = "", stage: str | None = None) -> None:
+        """`log`, with `step` prefixed to the message unless it is a bare number."""
         prefix = f"{step}: " if step is not None and not str(step).isdigit() else ""
         self.log(f"{prefix}{message}" if message else str(step), stage=stage)
 
-    def warn(self, message: str, stage: str | None = None) -> None:
-        self.log(f"WARNING: {message}", stage=stage)
-
-    def error(self, message: str, stage: str | None = None) -> None:
-        self.log(f"ERROR: {message}", stage=stage)
-
-
-# PipelineLogger alias for backward compatibility
-PipelineLogger = Logger
 
 # Default module-level logger instance
 logger = Logger("engine")

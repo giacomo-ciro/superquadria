@@ -11,7 +11,9 @@ if TYPE_CHECKING:
     from world.layout import Door, Room, WorldConfig
 
 
-def _local_door_box(door: Door, origin: Vec3) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+def _local_door_box(
+    door: Door, origin: Vec3
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
     u_axis, v_axis = IN_PLANE[door.axis]
     world_lo, world_hi = [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]
     world_lo[door.axis] = world_hi[door.axis] = door.coord
@@ -25,8 +27,15 @@ def _local_door_box(door: Door, origin: Vec3) -> tuple[tuple[float, float, float
     return (lo_min, hi_max)
 
 
-def room_prompt(room: Room, doors: list[Door], cfg: WorldConfig, interior, origin: Vec3, *,
-                brief: str | None) -> str:
+def room_prompt(
+    room: Room,
+    doors: list[Door],
+    cfg: WorldConfig,
+    interior,
+    origin: Vec3,
+    *,
+    brief: str | None,
+) -> str:
     """Prompt asking the room agent to model objects, then place them in one room."""
     (x0, y0, z0), (x1, y1, z1) = interior
     half_x, half_z, height = (x1 - x0) / 2, (z1 - z0) / 2, (y1 - y0)
@@ -43,7 +52,8 @@ def room_prompt(room: Room, doors: list[Door], cfg: WorldConfig, interior, origi
     door_text = "\n".join(door_lines) if door_lines else "- This room has no doorway."
     building = f'\nThe building this room belongs to: "{brief}"\n' if brief else ""
 
-    return f"""You are dressing one room of a building made entirely of superquadrics, for a
+    return f"""You are dressing one room of a building made entirely of \
+superquadrics, for a
 video game. Nothing is imported: every chair leg, every book, every candle flame is
 a superquadric you specify by hand. Your job is to make the room look like a place,
 not like a pile of blocks.
@@ -146,9 +156,12 @@ Interior, in the room's local frame:
 {door_text}
 
 Palette already applied to the shell (harmonise with it; do not repaint it):
-- Wall    [{room.wall_color[0]:.2f}, {room.wall_color[1]:.2f}, {room.wall_color[2]:.2f}]
-- Floor   [{room.floor_color[0]:.2f}, {room.floor_color[1]:.2f}, {room.floor_color[2]:.2f}]
-- Ceiling [{room.ceiling_color[0]:.2f}, {room.ceiling_color[1]:.2f}, {room.ceiling_color[2]:.2f}]
+- Wall    [{room.wall_color[0]:.2f}, {room.wall_color[1]:.2f}, \
+{room.wall_color[2]:.2f}]
+- Floor   [{room.floor_color[0]:.2f}, {room.floor_color[1]:.2f}, \
+{room.floor_color[2]:.2f}]
+- Ceiling [{room.ceiling_color[0]:.2f}, {room.ceiling_color[1]:.2f}, \
+{room.ceiling_color[2]:.2f}]
 
 REQUIRED KEY OBJECT: "{room.key_concept}"
 Exactly one object must have an `id` containing "{room.key_concept}", and it must have
@@ -165,8 +178,10 @@ HARD CONSTRAINTS — violations are dropped, not repaired
    An object flush against a wall sits at that wall's coordinate minus its own half
    depth. Any part that pokes out is dropped, leaving the object mutilated.
 2. CLEAR OF DOORWAYS: nothing in or in front of a doorway.
-3. NAVIGABLE: the player is a sphere of radius {cfg.player_radius:.1f} m and must be able to
-   fly from anywhere in the room to every doorway. Leave open lanes at least {lane:.1f} m
+3. NAVIGABLE: the player is a sphere of radius {cfg.player_radius:.1f} m and must \
+be able to
+   fly from anywhere in the room to every doorway. Leave open lanes at least \
+{lane:.1f} m
    wide between obstacles, and keep the middle of the room crossable. If that check
    fails, THE ENTIRE ROOM IS DISCARDED and ships empty — the most expensive mistake
    you can make here, so keep circulation obvious.

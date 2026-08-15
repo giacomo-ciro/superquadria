@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 import random
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from geometry.geometry import Vec3
 
@@ -28,29 +28,73 @@ Triple = tuple[float, float, float]
 #: backwards silently transposes door width and height.
 IN_PLANE = {0: (1, 2), 1: (0, 2), 2: (0, 1)}
 
-ROOM_NAMES = ["Copper Galley", "Ash Stair", "Slate Parlour", "Amber Vault",
-              "Cinder Hall", "Quill Study", "Lime Pantry", "Iron Landing",
-              "Moss Atrium", "Chalk Gallery", "Rust Workshop", "Pearl Solar"]
+ROOM_NAMES = [
+    "Copper Galley",
+    "Ash Stair",
+    "Slate Parlour",
+    "Amber Vault",
+    "Cinder Hall",
+    "Quill Study",
+    "Lime Pantry",
+    "Iron Landing",
+    "Moss Atrium",
+    "Chalk Gallery",
+    "Rust Workshop",
+    "Pearl Solar",
+]
 
 FALLBACK_THEMES = ["Procedural Building", "Untitled Wing", "Bare Partition"]
 
-FALLBACK_KEY_CONCEPTS = ["guitar", "tree", "chair", "lamp", "telescope",
-                         "sword", "chalice", "clock", "anvil", "pencil"]
+FALLBACK_KEY_CONCEPTS = [
+    "guitar",
+    "tree",
+    "chair",
+    "lamp",
+    "telescope",
+    "sword",
+    "chalice",
+    "clock",
+    "anvil",
+    "pencil",
+]
 
 PROCEDURAL_PALETTES = [
-    {"wall": (0.82, 0.80, 0.76), "floor": (0.42, 0.36, 0.30), "ceiling": (0.92, 0.90, 0.88)},
-    {"wall": (0.75, 0.78, 0.82), "floor": (0.28, 0.32, 0.38), "ceiling": (0.90, 0.92, 0.95)},
-    {"wall": (0.85, 0.82, 0.75), "floor": (0.50, 0.35, 0.25), "ceiling": (0.95, 0.93, 0.90)},
-    {"wall": (0.78, 0.82, 0.78), "floor": (0.32, 0.40, 0.34), "ceiling": (0.90, 0.94, 0.90)},
-    {"wall": (0.80, 0.78, 0.80), "floor": (0.35, 0.30, 0.35), "ceiling": (0.92, 0.90, 0.92)},
-    {"wall": (0.88, 0.84, 0.78), "floor": (0.45, 0.40, 0.35), "ceiling": (0.96, 0.94, 0.92)},
+    {
+        "wall": (0.82, 0.80, 0.76),
+        "floor": (0.42, 0.36, 0.30),
+        "ceiling": (0.92, 0.90, 0.88),
+    },
+    {
+        "wall": (0.75, 0.78, 0.82),
+        "floor": (0.28, 0.32, 0.38),
+        "ceiling": (0.90, 0.92, 0.95),
+    },
+    {
+        "wall": (0.85, 0.82, 0.75),
+        "floor": (0.50, 0.35, 0.25),
+        "ceiling": (0.95, 0.93, 0.90),
+    },
+    {
+        "wall": (0.78, 0.82, 0.78),
+        "floor": (0.32, 0.40, 0.34),
+        "ceiling": (0.90, 0.94, 0.90),
+    },
+    {
+        "wall": (0.80, 0.78, 0.80),
+        "floor": (0.35, 0.30, 0.35),
+        "ceiling": (0.92, 0.90, 0.92),
+    },
+    {
+        "wall": (0.88, 0.84, 0.78),
+        "floor": (0.45, 0.40, 0.35),
+        "ceiling": (0.96, 0.94, 0.92),
+    },
 ]
 
 #: Rooms per level in the zero-agent-call fallback. Not a config knob: choosing
 #: room count is the layout agent's job, and this stands in for it only when
 #: there is no agent.
 FALLBACK_ROOMS_PER_LEVEL = 6
-
 
 
 @dataclass(frozen=True)
@@ -130,8 +174,10 @@ class Room:
         """World-space (lo, hi) of the shell planes bounding this room."""
         g, half = cfg.grid_unit, cfg.half
         y0 = -half + self.level * cfg.level_height
-        return ((-half + self.ix0 * g, y0, -half + self.iz0 * g),
-                (-half + self.ix1 * g, y0 + cfg.level_height, -half + self.iz1 * g))
+        return (
+            (-half + self.ix0 * g, y0, -half + self.iz0 * g),
+            (-half + self.ix1 * g, y0 + cfg.level_height, -half + self.iz1 * g),
+        )
 
     def interior(self, cfg: WorldConfig) -> tuple[Triple, Triple]:
         """The free volume: the shell box inset by half a wall on every face."""
@@ -158,10 +204,14 @@ class Door:
     """
 
     a: int  # "from" room index
-    b: int | None  # "to" room index — None for the exit door: it leads nowhere, it ends the game
+    b: (
+        int | None
+    )  # "to" room index — None for the exit door: it leads nowhere, it ends the game
     axis: int  # 0 or 2: a wall door; 1: a floor hole between levels
     coord: float  # world-space coordinate of the plane the door sits in
-    hole: tuple[float, float, float, float]  # u0, v0, u1, v1 in the plane's in-plane axes
+    hole: tuple[
+        float, float, float, float
+    ]  # u0, v0, u1, v1 in the plane's in-plane axes
     vertical: tuple[float, float] | None  # (sill, lintel) world Y, wall doors only
     id: int | None = None
 
@@ -194,9 +244,11 @@ class Layout:
 def _parse_color(val: object, default: Triple) -> Triple:
     if isinstance(val, (list, tuple)) and len(val) >= 3:
         try:
-            return (max(0.0, min(1.0, float(val[0]))),
-                    max(0.0, min(1.0, float(val[1]))),
-                    max(0.0, min(1.0, float(val[2]))))
+            return (
+                max(0.0, min(1.0, float(val[0]))),
+                max(0.0, min(1.0, float(val[1]))),
+                max(0.0, min(1.0, float(val[2]))),
+            )
         except (ValueError, TypeError):
             pass
     return default
@@ -219,19 +271,36 @@ def _parse_room(item: dict, cfg: WorldConfig) -> Room:
     if ox < 0 or oz < 0 or ox + sx > cfg.cells or oz + sz > cfg.cells:
         raise ValueError("footprint outside the floor plate")
     palette_dict = item.get("palette") if isinstance(item.get("palette"), dict) else {}
-    wall_color = _parse_color(palette_dict.get("wall") or item.get("wall_color"), (0.80, 0.80, 0.78))
-    floor_color = _parse_color(palette_dict.get("floor") or item.get("floor_color"), (0.40, 0.36, 0.32))
-    ceiling_color = _parse_color(palette_dict.get("ceiling") or item.get("ceiling_color"), (0.92, 0.92, 0.90))
-    return Room(id=room_id, name=name, style=style, level=level, origin=(ox, oz), size=(sx, sz),
-                key_concept=key_concept, wall_color=wall_color, floor_color=floor_color,
-                ceiling_color=ceiling_color)
+    wall_color = _parse_color(
+        palette_dict.get("wall") or item.get("wall_color"), (0.80, 0.80, 0.78)
+    )
+    floor_color = _parse_color(
+        palette_dict.get("floor") or item.get("floor_color"), (0.40, 0.36, 0.32)
+    )
+    ceiling_color = _parse_color(
+        palette_dict.get("ceiling") or item.get("ceiling_color"), (0.92, 0.92, 0.90)
+    )
+    return Room(
+        id=room_id,
+        name=name,
+        style=style,
+        level=level,
+        origin=(ox, oz),
+        size=(sx, sz),
+        key_concept=key_concept,
+        wall_color=wall_color,
+        floor_color=floor_color,
+        ceiling_color=ceiling_color,
+    )
 
 
 def _footprints_overlap(a: Room, b: Room) -> bool:
     return a.ix0 < b.ix1 and b.ix0 < a.ix1 and a.iz0 < b.iz1 and b.iz0 < a.iz1
 
 
-def _geometric_adjacency(rooms: list[Room], cfg: WorldConfig) -> dict[tuple[str, str], tuple]:
+def _geometric_adjacency(
+    rooms: list[Room], cfg: WorldConfig
+) -> dict[tuple[str, str], tuple]:
     """Every room pair that *could* hold a doorway: edge-adjacent on one level
     with enough shared edge for a door, or footprint-overlapping across two
     adjacent levels with enough overlap on both axes."""
@@ -239,11 +308,12 @@ def _geometric_adjacency(rooms: list[Room], cfg: WorldConfig) -> dict[tuple[str,
     g = cfg.grid_unit
     found: dict[tuple[str, str], tuple] = {}
     for i, a in enumerate(rooms):
-        for b in rooms[i + 1:]:
+        for b in rooms[i + 1 :]:
             if a.level == b.level:
                 for axis, (a0, a1, b0, b1, oa0, oa1, ob0, ob1) in (
-                        (0, (a.ix0, a.ix1, b.ix0, b.ix1, a.iz0, a.iz1, b.iz0, b.iz1)),
-                        (2, (a.iz0, a.iz1, b.iz0, b.iz1, a.ix0, a.ix1, b.ix0, b.ix1))):
+                    (0, (a.ix0, a.ix1, b.ix0, b.ix1, a.iz0, a.iz1, b.iz0, b.iz1)),
+                    (2, (a.iz0, a.iz1, b.iz0, b.iz1, a.ix0, a.ix1, b.ix0, b.ix1)),
+                ):
                     if a1 != b0 and b1 != a0:
                         continue
                     lo, hi = max(oa0, ob0), min(oa1, ob1)
@@ -287,8 +357,9 @@ def _task_path(graph: dict[int, set[int]], start: int = 0) -> list[int]:
     return list(reversed(path))
 
 
-def _wall_door_geometry(cell: float, lo: float, hi: float, level: int, axis: int,
-                        cfg: WorldConfig) -> tuple[float, tuple, tuple]:
+def _wall_door_geometry(
+    cell: float, lo: float, hi: float, level: int, axis: int, cfg: WorldConfig
+) -> tuple[float, tuple, tuple]:
     """coord, hole, vertical for a doorway in a wall normal to `axis` (0 or 2),
     centred on the [lo, hi] cell span shared by the two rooms it opens between
     — or, for an exit door, the free span of a single room's exterior wall."""
@@ -298,13 +369,20 @@ def _wall_door_geometry(cell: float, lo: float, hi: float, level: int, axis: int
     sill = -half + level * cfg.level_height + cfg.wall_thickness / 2
     vertical = (sill, sill + cfg.door_extent)
     along = (across - cfg.door_width / 2, across + cfg.door_width / 2)
-    hole = ((vertical[0], along[0], vertical[1], along[1]) if axis == 0
-           else (along[0], vertical[0], along[1], vertical[1]))
+    hole = (
+        (vertical[0], along[0], vertical[1], along[1])
+        if axis == 0
+        else (along[0], vertical[0], along[1], vertical[1])
+    )
     return coord, hole, vertical
 
 
-def _doors_for_path(rooms: list[Room], adjacency: dict[tuple[int, int], tuple],
-                    path: list[int], cfg: WorldConfig) -> list[Door]:
+def _doors_for_path(
+    rooms: list[Room],
+    adjacency: dict[tuple[int, int], tuple],
+    path: list[int],
+    cfg: WorldConfig,
+) -> list[Door]:
     doors = []
     for a, b in zip(path, path[1:]):
         entry = adjacency.get((a, b)) or adjacency.get((b, a))
@@ -313,7 +391,9 @@ def _doors_for_path(rooms: list[Room], adjacency: dict[tuple[int, int], tuple],
         axis = entry[0]
         if axis in (0, 2):
             _, cell, lo, hi = entry
-            coord, hole, vertical = _wall_door_geometry(cell, lo, hi, rooms[a].level, axis, cfg)
+            coord, hole, vertical = _wall_door_geometry(
+                cell, lo, hi, rooms[a].level, axis, cfg
+            )
         else:
             _, level, (lo_x, hi_x), (lo_z, hi_z) = entry
             half, g = cfg.half, cfg.grid_unit
@@ -323,11 +403,15 @@ def _doors_for_path(rooms: list[Room], adjacency: dict[tuple[int, int], tuple],
             d = cfg.door_width / 2
             vertical = None
             hole = (cx - d, cz - d, cx + d, cz + d)
-        doors.append(Door(a=a, b=b, axis=axis, coord=coord, hole=hole, vertical=vertical))
+        doors.append(
+            Door(a=a, b=b, axis=axis, coord=coord, hole=hole, vertical=vertical)
+        )
     return doors
 
 
-def _shares_wall(other: Room, level: int, axis: int, cell: int, lo: int, hi: int) -> bool:
+def _shares_wall(
+    other: Room, level: int, axis: int, cell: int, lo: int, hi: int
+) -> bool:
     """Does `other` cover any part of the [lo, hi] span of the wall at
     `axis`/`cell`? Used to find a wall with nothing behind it at all — not
     just nothing on the task path — so the exit door never opens into a real,
@@ -335,24 +419,38 @@ def _shares_wall(other: Room, level: int, axis: int, cell: int, lo: int, hi: int
     if other.level != level:
         return False
     if axis == 0:
-        return (other.ix0 == cell or other.ix1 == cell) and other.iz0 < hi and lo < other.iz1
-    return (other.iz0 == cell or other.iz1 == cell) and other.ix0 < hi and lo < other.ix1
+        return (
+            (other.ix0 == cell or other.ix1 == cell)
+            and other.iz0 < hi
+            and lo < other.iz1
+        )
+    return (
+        (other.iz0 == cell or other.iz1 == cell) and other.ix0 < hi and lo < other.ix1
+    )
 
 
-def _exterior_wall(room: Room, rooms: list[Room], cfg: WorldConfig
-                   ) -> tuple[int, int, int, int] | None:
+def _exterior_wall(
+    room: Room, rooms: list[Room], cfg: WorldConfig
+) -> tuple[int, int, int, int] | None:
     """A wall of `room` touching no other room and wide enough for a doorway,
     or None if all four are shared. The exit door goes here: cut into a wall
     with nothing behind it, "leads nowhere" is true by construction rather
     than by convention."""
     g = cfg.grid_unit
-    candidates = [(0, room.ix0, room.iz0, room.iz1), (0, room.ix1, room.iz0, room.iz1),
-                 (2, room.iz0, room.ix0, room.ix1), (2, room.iz1, room.ix0, room.ix1)]
+    candidates = [
+        (0, room.ix0, room.iz0, room.iz1),
+        (0, room.ix1, room.iz0, room.iz1),
+        (2, room.iz0, room.ix0, room.ix1),
+        (2, room.iz1, room.ix0, room.ix1),
+    ]
     for axis, cell, lo, hi in candidates:
         if (hi - lo) * g < cfg.door_width + 2 * cfg.wall_thickness:
             continue
-        if not any(_shares_wall(other, room.level, axis, cell, lo, hi)
-                  for other in rooms if other.id != room.id):
+        if not any(
+            _shares_wall(other, room.level, axis, cell, lo, hi)
+            for other in rooms
+            if other.id != room.id
+        ):
             return axis, cell, lo, hi
     return None
 
@@ -365,7 +463,9 @@ def _exit_door(room: Room, rooms: list[Room], cfg: WorldConfig) -> Door | None:
         return None
     axis, cell, lo, hi = wall
     coord, hole, vertical = _wall_door_geometry(cell, lo, hi, room.level, axis, cfg)
-    return Door(a=room.index, b=None, axis=axis, coord=coord, hole=hole, vertical=vertical)
+    return Door(
+        a=room.index, b=None, axis=axis, coord=coord, hole=hole, vertical=vertical
+    )
 
 
 def validate_and_repair(raw: dict, cfg: WorldConfig) -> Layout:
@@ -392,8 +492,10 @@ def validate_and_repair(raw: dict, cfg: WorldConfig) -> Layout:
             continue
         if room.id in accepted:
             continue
-        if any(room.level == other.level and _footprints_overlap(room, other)
-               for other in accepted.values()):
+        if any(
+            room.level == other.level and _footprints_overlap(room, other)
+            for other in accepted.values()
+        ):
             continue
         accepted[room.id] = room
     if not accepted:
@@ -439,7 +541,9 @@ def validate_and_repair(raw: dict, cfg: WorldConfig) -> Layout:
         if rid not in reachable:
             del accepted[rid]
     connections = {(a, b) for a, b in connections if a in accepted and b in accepted}
-    adjacency = {k: v for k, v in adjacency.items() if k[0] in accepted and k[1] in accepted}
+    adjacency = {
+        k: v for k, v in adjacency.items() if k[0] in accepted and k[1] in accepted
+    }
 
     ordered_ids = [spawn_id, *(rid for rid in accepted if rid != spawn_id)]
     rooms: list[Room] = []
@@ -453,18 +557,28 @@ def validate_and_repair(raw: dict, cfg: WorldConfig) -> Layout:
     for a, b in connections:
         index_graph[index_of[a]].add(index_of[b])
         index_graph[index_of[b]].add(index_of[a])
-    index_adjacency = {(index_of[a], index_of[b]): value for (a, b), value in adjacency.items()}
+    index_adjacency = {
+        (index_of[a], index_of[b]): value for (a, b), value in adjacency.items()
+    }
 
     path = _task_path(index_graph, start=0)
     doors = _doors_for_path(rooms, index_adjacency, path, cfg)
     exit_door = _exit_door(rooms[path[-1]], rooms, cfg)
     if exit_door is None:
-        raise ValueError("last room on the task path has no exterior wall for an exit door")
+        raise ValueError(
+            "last room on the task path has no exterior wall for an exit door"
+        )
     doors.append(exit_door)
 
-    return Layout(theme=theme, description=description, rooms=rooms,
-                 connections=sorted((index_of[a], index_of[b]) for a, b in connections),
-                 adjacency=index_adjacency, path=path, doors=doors)
+    return Layout(
+        theme=theme,
+        description=description,
+        rooms=rooms,
+        connections=sorted((index_of[a], index_of[b]) for a, b in connections),
+        adjacency=index_adjacency,
+        path=path,
+        doors=doors,
+    )
 
 
 # ---------------------------------------------------------------- procedural
@@ -478,8 +592,11 @@ def _partition(rng: random.Random, cells: int, count: int, min_cells: int):
     """
     rects = [(0, 0, cells, cells)]
     while len(rects) < count:
-        splittable = [r for r in rects
-                      if r[2] - r[0] >= 2 * min_cells or r[3] - r[1] >= 2 * min_cells]
+        splittable = [
+            r
+            for r in rects
+            if r[2] - r[0] >= 2 * min_cells or r[3] - r[1] >= 2 * min_cells
+        ]
         if not splittable:
             break
         u0, v0, u1, v1 = max(splittable, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
@@ -497,9 +614,13 @@ def _partition(rng: random.Random, cells: int, count: int, min_cells: int):
     return rects
 
 
-def procedural_layout(rng: random.Random, cfg: WorldConfig, *,
-                      rooms_per_level: int = FALLBACK_ROOMS_PER_LEVEL,
-                      levels: int | None = None) -> dict:
+def procedural_layout(
+    rng: random.Random,
+    cfg: WorldConfig,
+    *,
+    rooms_per_level: int = FALLBACK_ROOMS_PER_LEVEL,
+    levels: int | None = None,
+) -> dict:
     """A raw layout dict, in the same shape an agent call would return.
 
     Zero agent calls: a binary-space partition per level, offered to
@@ -508,30 +629,46 @@ def procedural_layout(rng: random.Random, cfg: WorldConfig, *,
     real generation.
     """
     cells, min_cells = cfg.cells, cfg.min_cells
-    levels = max(1, min(cfg.max_levels, levels if levels is not None else cfg.max_levels))
+    levels = max(
+        1, min(cfg.max_levels, levels if levels is not None else cfg.max_levels)
+    )
     rooms, index = [], 0
     for level in range(levels):
         for ix0, iz0, ix1, iz1 in _partition(rng, cells, rooms_per_level, min_cells):
             pal = PROCEDURAL_PALETTES[index % len(PROCEDURAL_PALETTES)]
-            rooms.append({
-                "id": f"room-{index}",
-                "name": ROOM_NAMES[index % len(ROOM_NAMES)],
-                "style": "Bare stone walls and a plain floor — an undecorated procedural room.",
-                "key_concept": FALLBACK_KEY_CONCEPTS[index % len(FALLBACK_KEY_CONCEPTS)],
-                "palette": {
-                    "wall": list(pal["wall"]),
-                    "floor": list(pal["floor"]),
-                    "ceiling": list(pal["ceiling"]),
-                },
-                "level": level,
-                "origin": [ix0, iz0],
-                "size": [ix1 - ix0, iz1 - iz0],
-            })
+            rooms.append(
+                {
+                    "id": f"room-{index}",
+                    "name": ROOM_NAMES[index % len(ROOM_NAMES)],
+                    "style": (
+                        "Bare stone walls and a plain floor — an undecorated "
+                        "procedural room."
+                    ),
+                    "key_concept": FALLBACK_KEY_CONCEPTS[
+                        index % len(FALLBACK_KEY_CONCEPTS)
+                    ],
+                    "palette": {
+                        "wall": list(pal["wall"]),
+                        "floor": list(pal["floor"]),
+                        "ceiling": list(pal["ceiling"]),
+                    },
+                    "level": level,
+                    "origin": [ix0, iz0],
+                    "size": [ix1 - ix0, iz1 - iz0],
+                }
+            )
             index += 1
 
-    connections = [{"from": rooms[a]["id"], "to": rooms[b]["id"]}
-                  for a in range(len(rooms)) for b in range(a + 1, len(rooms))]
+    connections = [
+        {"from": rooms[a]["id"], "to": rooms[b]["id"]}
+        for a in range(len(rooms))
+        for b in range(a + 1, len(rooms))
+    ]
 
-    return {"theme": rng.choice(FALLBACK_THEMES),
-           "description": "A procedurally partitioned building.",
-           "levels": levels, "rooms": rooms, "connections": connections}
+    return {
+        "theme": rng.choice(FALLBACK_THEMES),
+        "description": "A procedurally partitioned building.",
+        "levels": levels,
+        "rooms": rooms,
+        "connections": connections,
+    }

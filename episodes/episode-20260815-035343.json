@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-tarred-line.json",
+  "world": "worlds/the-tarred-line.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 13,

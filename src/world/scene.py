@@ -17,7 +17,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from geometry import FORWARD, Vec3
-from geometry.superquadrics import DOOR, LOCK, PORTAL, Sensor, Superquadric, SuperquadricHandler
+from geometry.superquadrics import (
+    DOOR,
+    LOCK,
+    PORTAL,
+    Sensor,
+    Superquadric,
+    SuperquadricHandler,
+)
 
 #: Stands in for a primitive ID when the thing you hit is the world boundary.
 #: Real primitive IDs are non-negative, so the two can never be confused.
@@ -39,10 +46,12 @@ class Player:
         carrying_dict = None
         if self.carrying is not None:
             carrying_dict = [p.to_dict() for p in self.carrying]
-        return {"position": list(self.position.rounded(3)),
-                "forward": list(self.forward.rounded(4)),
-                "radius": self.radius,
-                "carrying": carrying_dict}
+        return {
+            "position": list(self.position.rounded(3)),
+            "forward": list(self.forward.rounded(4)),
+            "radius": self.radius,
+            "carrying": carrying_dict,
+        }
 
     @classmethod
     def from_dict(cls, data: dict) -> "Player":
@@ -52,10 +61,12 @@ class Player:
             carrying = [Superquadric.from_dict(item) for item in carrying_raw]
         elif isinstance(carrying_raw, dict):
             carrying = [Superquadric.from_dict(carrying_raw)]
-        return cls(position=Vec3.parse(data["position"]),
-                   forward=Vec3.parse(data.get("forward", (0.0, 0.0, 1.0))).normalized(),
-                   radius=float(data.get("radius", 0.6)),
-                   carrying=carrying)
+        return cls(
+            position=Vec3.parse(data["position"]),
+            forward=Vec3.parse(data.get("forward", (0.0, 0.0, 1.0))).normalized(),
+            radius=float(data.get("radius", 0.6)),
+            carrying=carrying,
+        )
 
 
 @dataclass
@@ -71,8 +82,18 @@ class Scene:
         self.anonymize_assemblies()
 
     def anonymize_assemblies(self) -> None:
-        """Ensure all non-structural assemblies in the scene are anonymized to assembly-0, assembly-1, ..."""
-        structural_keywords = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+        """Ensure all non-structural assemblies in the scene are anonymized to
+        assembly-0, assembly-1, ..."""
+        structural_keywords = (
+            "wall",
+            "floor",
+            "ceiling",
+            "door",
+            "frame",
+            "portal",
+            "lock",
+            "shell",
+        )
 
         # Normalize lock primitives to be part of the door assembly
         for p in self.primitives:
@@ -95,7 +116,10 @@ class Scene:
         if not non_structural:
             return
 
-        if all(name.startswith("assembly-") and name[9:].isdigit() for name in non_structural):
+        if all(
+            name.startswith("assembly-") and name[9:].isdigit()
+            for name in non_structural
+        ):
             return
 
         sorted_names = sorted(non_structural)
@@ -125,7 +149,11 @@ class Scene:
     def in_bounds(self, position: Vec3) -> bool:
         """Is the whole player sphere inside the playable cube?"""
         limit = self.half - self.player.radius
-        return (abs(position.x) <= limit and abs(position.y) <= limit and abs(position.z) <= limit)
+        return (
+            abs(position.x) <= limit
+            and abs(position.y) <= limit
+            and abs(position.z) <= limit
+        )
 
     def blocker(self, position: Vec3) -> int | None:
         """What stops the player standing here — `BOUNDS`, a primitive ID, or None."""
@@ -144,7 +172,16 @@ class Scene:
     def _expand_assemblies(self, seen: list[Superquadric]) -> list[Superquadric]:
         """When at least one object which makes an assembly is seen, the whole
         assembly is visible. Assemblies are grouped and behave together."""
-        structural_keywords = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+        structural_keywords = (
+            "wall",
+            "floor",
+            "ceiling",
+            "door",
+            "frame",
+            "portal",
+            "lock",
+            "shell",
+        )
         seen_assemblies: set[str] = set()
         for p in seen:
             if p.kind in (DOOR, PORTAL, LOCK):
@@ -173,10 +210,16 @@ class Scene:
         When at least one object which makes an assembly is seen, the whole
         assembly is visible. Assemblies are grouped and behave together.
         """
-        visible = self.primitives.visible_cone_from(self.player.position, self.player.forward, sensor)
+        visible = self.primitives.visible_cone_from(
+            self.player.position, self.player.forward, sensor
+        )
         room = self._room_at(self.player.position)
         if room is None:
-            seen = [p for p in visible if p.kind != LOCK and not p.assembly.startswith("lock-")]
+            seen = [
+                p
+                for p in visible
+                if p.kind != LOCK and not p.assembly.startswith("lock-")
+            ]
             return self._expand_assemblies(seen)
         (x0, y0, z0), (x1, y1, z1) = room["box"]
         # Matches the tolerance `_find_walls_without_doors` uses for the same
@@ -184,12 +227,15 @@ class Scene:
         # exactly on their common boundary, and rounding at save time can put
         # it a hair outside a bare inclusive test.
         margin = 0.2
-        seen = [p for p in visible if
-                p.kind != LOCK and
-                not p.assembly.startswith("lock-") and
-                x0 - margin <= p.position.x <= x1 + margin and
-                y0 - margin <= p.position.y <= y1 + margin and
-                z0 - margin <= p.position.z <= z1 + margin]
+        seen = [
+            p
+            for p in visible
+            if p.kind != LOCK
+            and not p.assembly.startswith("lock-")
+            and x0 - margin <= p.position.x <= x1 + margin
+            and y0 - margin <= p.position.y <= y1 + margin
+            and z0 - margin <= p.position.z <= z1 + margin
+        ]
         return self._expand_assemblies(seen)
 
     def describe_blocker(self, blocker: int | None) -> str:
@@ -241,8 +287,9 @@ class Scene:
     def from_dict(cls, data: dict, *, collision_resolution: int = 8) -> "Scene":
         return cls(
             bounds=float(data["bounds"]),
-            primitives=SuperquadricHandler.from_list(data["primitives"],
-                                                     collision_resolution=collision_resolution),
+            primitives=SuperquadricHandler.from_list(
+                data["primitives"], collision_resolution=collision_resolution
+            ),
             player=Player.from_dict(data["player"]),
             meta=data.get("meta", {}),
         )
@@ -255,5 +302,7 @@ class Scene:
 
     @classmethod
     def load(cls, path: str | Path, *, collision_resolution: int = 8) -> "Scene":
-        return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")),
-                             collision_resolution=collision_resolution)
+        return cls.from_dict(
+            json.loads(Path(path).read_text(encoding="utf-8")),
+            collision_resolution=collision_resolution,
+        )

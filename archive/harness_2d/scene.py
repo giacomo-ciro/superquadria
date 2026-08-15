@@ -79,7 +79,9 @@ class Scene:
 
     # ------------------------------------------------------------ observation
 
-    def local_view(self, center: Vector2D | None = None, size: int = VIEW_SIZE) -> list[list[int]]:
+    def local_view(
+        self, center: Vector2D | None = None, size: int = VIEW_SIZE
+    ) -> list[list[int]]:
         """The size x size window of tile codes the agent observes.
 
         The player sits at offset `(size - 1) // 2` in both axes; cells outside
@@ -89,7 +91,9 @@ class Scene:
         center = self.player.position if center is None else center
         offset = (size - 1) // 2
         top_left = Vector2D(center.row - offset, center.col - offset)
-        occupants = {ent.position: ent.kind for ent in self.entities if ent.kind != Tile.PLAYER}
+        occupants = {
+            ent.position: ent.kind for ent in self.entities if ent.kind != Tile.PLAYER
+        }
 
         view: list[list[int]] = []
         for dr in range(size):
@@ -110,7 +114,9 @@ class Scene:
     def view_origin(self, size: int = VIEW_SIZE) -> Vector2D:
         """Absolute coordinate of the local view's top-left corner."""
         offset = (size - 1) // 2
-        return Vector2D(self.player.position.row - offset, self.player.position.col - offset)
+        return Vector2D(
+            self.player.position.row - offset, self.player.position.col - offset
+        )
 
     # -------------------------------------------------------- (de)serialisation
 
@@ -129,13 +135,20 @@ class Scene:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Scene":
-        from .maze_utils import parse_rows  # deferred: maze_utils pulls in Scene helpers
+        from .maze_utils import (
+            parse_rows,  # deferred: maze_utils pulls in Scene helpers
+        )
 
         width, height = int(data["width"]), int(data["height"])
         terrain = parse_rows(data["terrain"], width=width, height=height)
         entities = [Entity.from_dict(e) for e in data.get("entities", [])]
-        return cls(width=width, height=height, terrain=terrain,
-                   entities=entities, meta=data.get("meta", {}))
+        return cls(
+            width=width,
+            height=height,
+            terrain=terrain,
+            entities=entities,
+            meta=data.get("meta", {}),
+        )
 
     def save(self, path: str | Path) -> Path:
         path = Path(path)

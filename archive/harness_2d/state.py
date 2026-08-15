@@ -21,7 +21,9 @@ def grid_to_text(grid: list[list[int]], *, indent: str = "  ") -> str:
     ruler = "".join(str(c % 10) for c in range(width))
     lines = [f"{indent}   {ruler}"]
     for r, row in enumerate(grid):
-        lines.append(f"{indent}{r:>2} " + "".join(GLYPHS.get(cell, "?") for cell in row))
+        lines.append(
+            f"{indent}{r:>2} " + "".join(GLYPHS.get(cell, "?") for cell in row)
+        )
     return "\n".join(lines)
 
 
@@ -29,19 +31,25 @@ def grid_to_text(grid: list[list[int]], *, indent: str = "  ") -> str:
 class State:
     """One observation tick."""
 
-    grid: list[list[int]]           # the local view: the agent's only real percept
-    player_local: Vector2D          # where the player sits inside `grid`
-    player_position: Vector2D       # absolute position (odometry, not vision)
-    view_origin: Vector2D           # absolute coordinate of grid[0][0]
-    world_size: tuple[int, int]     # (height, width)
+    grid: list[list[int]]  # the local view: the agent's only real percept
+    player_local: Vector2D  # where the player sits inside `grid`
+    player_position: Vector2D  # absolute position (odometry, not vision)
+    view_origin: Vector2D  # absolute coordinate of grid[0][0]
+    world_size: tuple[int, int]  # (height, width)
     step: int = 0
-    last_outcome: str = "start"     # human-readable result of the previous trajectory
+    last_outcome: str = "start"  # human-readable result of the previous trajectory
     key_visible: bool = False
     extras: dict = field(default_factory=dict)
 
     @classmethod
-    def observe(cls, scene: Scene, *, step: int = 0, last_outcome: str = "start",
-                size: int = VIEW_SIZE) -> "State":
+    def observe(
+        cls,
+        scene: Scene,
+        *,
+        step: int = 0,
+        last_outcome: str = "start",
+        size: int = VIEW_SIZE,
+    ) -> "State":
         grid = scene.local_view(size=size)
         offset = (size - 1) // 2
         return cls(

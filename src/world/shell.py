@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from geometry import Vec3
 from geometry.superquadrics import DOOR, OBSTACLE, Superquadric
+
 from .layout import IN_PLANE, Door, Layout, Triple, WorldConfig
 
 #: Boxes are round at the corners at any finite exponent; this is as sharp as
@@ -53,14 +54,19 @@ def decompose(covered: list[tuple], holes: list[tuple]) -> list[tuple]:
         run, j = [], 0
         while j < len(vs) - 1:
             cv = (vs[j] + vs[j + 1]) / 2
-            on = (any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
-                  and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes))
+            on = any(
+                r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered
+            ) and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes)
             if on:
                 j0 = j
                 while j < len(vs) - 1:
                     cv = (vs[j] + vs[j + 1]) / 2
-                    if not (any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
-                            and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes)):
+                    if not (
+                        any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
+                        and not any(
+                            h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes
+                        )
+                    ):
                         break
                     j += 1
                 run.append((j0, j))
@@ -95,11 +101,17 @@ def build_shell(layout: Layout, cfg: WorldConfig) -> tuple[list[Superquadric], i
 
     for room in layout.rooms:
         (x0, y0, z0), (x1, y1, z1) = room.box(cfg)
-        for axis, coord, rect in ((0, x0, (y0, z0, y1, z1)), (0, x1, (y0, z0, y1, z1)),
-                                  (2, z0, (x0, y0, x1, y1)), (2, z1, (x0, y0, x1, y1)),
-                                  (1, y0, (x0, z0, x1, z1)), (1, y1, (x0, z0, x1, z1))):
-            group = planes.setdefault((axis, round(coord, 6)),
-                                      {"covered": [], "holes": [], "rooms": set()})
+        for axis, coord, rect in (
+            (0, x0, (y0, z0, y1, z1)),
+            (0, x1, (y0, z0, y1, z1)),
+            (2, z0, (x0, y0, x1, y1)),
+            (2, z1, (x0, y0, x1, y1)),
+            (1, y0, (x0, z0, x1, z1)),
+            (1, y1, (x0, z0, x1, z1)),
+        ):
+            group = planes.setdefault(
+                (axis, round(coord, 6)), {"covered": [], "holes": [], "rooms": set()}
+            )
             group["covered"].append(rect)
             group["rooms"].add(room.index)
 
@@ -129,10 +141,18 @@ def build_shell(layout: Layout, cfg: WorldConfig) -> tuple[list[Superquadric], i
             else:
                 face = "wall"
                 prim_color = owner_room.wall_color
-            prims.append(Superquadric(id=next_id, kind=OBSTACLE, assembly=face,
-                                      position=Vec3(*pos), rotation=(0.0, 0.0, 0.0),
-                                      scale=tuple(scale), exponents=SHELL_EXPONENTS,
-                                      color=prim_color))
+            prims.append(
+                Superquadric(
+                    id=next_id,
+                    kind=OBSTACLE,
+                    assembly=face,
+                    position=Vec3(*pos),
+                    rotation=(0.0, 0.0, 0.0),
+                    scale=tuple(scale),
+                    exponents=SHELL_EXPONENTS,
+                    color=prim_color,
+                )
+            )
             next_id += 1
 
     for door in layout.doors:
@@ -143,10 +163,18 @@ def build_shell(layout: Layout, cfg: WorldConfig) -> tuple[list[Superquadric], i
         pos[axis], scale[axis] = door.coord, t / 2
         pos[u_axis], scale[u_axis] = (u0 + u1) / 2, (u1 - u0) / 2
         pos[v_axis], scale[v_axis] = (v0 + v1) / 2, (v1 - v0) / 2
-        prims.append(Superquadric(id=next_id, kind=DOOR, assembly="door",
-                                  position=Vec3(*pos), rotation=(0.0, 0.0, 0.0),
-                                  scale=tuple(scale), exponents=SHELL_EXPONENTS,
-                                  color=(DOOR_GREY,) * 3))
+        prims.append(
+            Superquadric(
+                id=next_id,
+                kind=DOOR,
+                assembly="door",
+                position=Vec3(*pos),
+                rotation=(0.0, 0.0, 0.0),
+                scale=tuple(scale),
+                exponents=SHELL_EXPONENTS,
+                color=(DOOR_GREY,) * 3,
+            )
+        )
         door.id = next_id
         next_id += 1
 

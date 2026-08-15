@@ -29,9 +29,15 @@ class ClaudeNavigator(Policy):
 
     name = "agent"
 
-    def __init__(self, agent: Agent, *, max_steps: int = MAX_TRAJECTORY,
-                 step_budget: int | None = None, fallback: Policy | None = None,
-                 log: PipelineLogger | None = None):
+    def __init__(
+        self,
+        agent: Agent,
+        *,
+        max_steps: int = MAX_TRAJECTORY,
+        step_budget: int | None = None,
+        fallback: Policy | None = None,
+        log: PipelineLogger | None = None,
+    ):
         self.agent = agent
         # Saved into every episode as `policy`, so it has to say which CLI actually
         # played — a codex run recorded as "claude" is a corrupt comparison.
@@ -63,9 +69,11 @@ class ClaudeNavigator(Policy):
         except (AgentError, ValueError, KeyError, TypeError) as exc:
             if self.cancelled:
                 raise  # the user quit mid-call; not an agent failure, and the
-                       # engine has already stopped caring about the answer
+                # engine has already stopped caring about the answer
             self.failures += 1
-            self.log.info(state.step, f"agent call failed ({exc}); falling back for this turn")
+            self.log.info(
+                state.step, f"agent call failed ({exc}); falling back for this turn"
+            )
             self.fallback.memory = memory  # share the map, don't re-explore
             return self.fallback.act(state)
 
@@ -76,20 +84,29 @@ class ClaudeNavigator(Policy):
         unknown = memory.unknown_by_direction(state.player_position)
 
         if memory.key_position is not None:
-            key_line = (f"The key is at {memory.key_position} — you have seen it. "
-                        "Route to it and stand on it.")
+            key_line = (
+                f"The key is at {memory.key_position} — you have seen it. "
+                "Route to it and stand on it."
+            )
         else:
-            key_line = ("The key has not been seen yet. It is somewhere in the '?' region; "
-                        "explore to uncover it.")
+            key_line = (
+                "The key has not been seen yet. It is somewhere in the '?' region; "
+                "explore to uncover it."
+            )
 
         stalled = ""
         if len(self.recent_positions) >= 3 and len(set(self.recent_positions)) == 1:
-            stalled = ("\nWARNING: your last few plans moved you nowhere. You are walking into "
-                       "a wall on the first step. Pick a different first direction.\n")
+            stalled = (
+                "\nWARNING: your last few plans moved you nowhere. "
+                "You are walking into a wall on the first step. "
+                "Pick a different first direction.\n"
+            )
 
         budget = ""
         if self.step_budget is not None:
-            budget = f" You have about {max(0, self.step_budget - state.step)} steps left."
+            budget = (
+                f" You have about {max(0, self.step_budget - state.step)} steps left."
+            )
 
         return f"""Find the key in a {height}x{width} grid maze.
 
@@ -104,19 +121,23 @@ CURRENT VIEW — the {len(state.grid)}x{len(state.grid[0])} window around you
 REMEMBERED MAP — every cell you have observed so far; '?' is never-seen:
 {memory.render(state.player_position)}
 
-Unseen cells lying in each direction: up={unknown['up']}, down={unknown['down']}, \
-left={unknown['left']}, right={unknown['right']}.
+Unseen cells lying in each direction: up={unknown["up"]}, down={unknown["down"]}, \
+left={unknown["left"]}, right={unknown["right"]}.
 Explored so far: {memory.explored_fraction():.0%} of the maze.
 
 {key_line}
 {stalled}
 HOW MOVEMENT WORKS:
-- Your actions run in order, one cell per action: up = row-1, down = row+1, left = col-1, right = col+1.
-- The FIRST action that would step into a wall halts execution; every remaining action in that
+- Your actions run in order, one cell per action: up = row-1, down = row+1, \
+left = col-1, right = col+1.
+- The FIRST action that would step into a wall halts execution; every remaining \
+action in that
   plan is discarded. So a plan that starts by walking into a wall wastes the whole turn.
-- '?' cells may be floor or wall. Walking into them is how you reveal them, but keep the risky
+- '?' cells may be floor or wall. Walking into them is how you reveal them, but \
+keep the risky
   step near the END of a plan so a wrong guess costs you little.
 
-Return up to {self.max_steps} actions that make real progress: trace a concrete route over the
+Return up to {self.max_steps} actions that make real progress: trace a concrete route \
+over the
 remembered map, cell by cell, and check each step is not '#' before committing to it.
 """

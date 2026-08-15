@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-house-of-fallen-orbits.json",
+  "world": "worlds/the-house-of-fallen-orbits.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 3,

@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/bunker-zarya-9.json",
+  "world": "worlds/bunker-zarya-9.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 26,

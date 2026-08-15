@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-stormglass-lighthouse.json",
+  "world": "worlds/the-stormglass-lighthouse.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 37,

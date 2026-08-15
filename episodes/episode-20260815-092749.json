@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/hearthroot-cottage.json",
+  "world": "worlds/hearthroot-cottage.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 21,

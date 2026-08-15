@@ -14,12 +14,12 @@ from __future__ import annotations
 import math
 
 from agents.base import Agent, AgentError
-from engine.logger import Logger, logger
+from logger import Logger
+from prompts.navigation import NAV_SYSTEM_PROMPT, nav_user_prompt
 
 from .memory import SpatialMemory
 from .moves import MAX_WAYPOINTS, TRAJECTORY_SCHEMA, Trajectory
 from .policies import Policy
-from prompts.navigation import NAV_SYSTEM_PROMPT, nav_user_prompt
 from .state import State
 
 
@@ -28,10 +28,18 @@ class WaypointNavigator(Policy):
 
     name = "agent"
 
-    def __init__(self, agent: Agent, *, sensor_range: float = math.inf, max_waypoints: int = MAX_WAYPOINTS,
-                 max_segment: float = 15.0, call_budget: int | None = None,
-                 distance_budget: float | None = None, collision_budget: int | None = None,
-                 log: Logger | None = None):
+    def __init__(
+        self,
+        agent: Agent,
+        *,
+        sensor_range: float = math.inf,
+        max_waypoints: int = MAX_WAYPOINTS,
+        max_segment: float = 15.0,
+        call_budget: int | None = None,
+        distance_budget: float | None = None,
+        collision_budget: int | None = None,
+        log: Logger | None = None,
+    ):
         self.agent = agent
         self.name = getattr(agent, "binary", type(self).name)
         self.sensor_range = sensor_range
@@ -51,8 +59,12 @@ class WaypointNavigator(Policy):
     def act(self, state: State) -> Trajectory:
         prompt = self.build_prompt(state, self.memory)
         try:
-            payload = self.agent.run(prompt, TRAJECTORY_SCHEMA, system=NAV_SYSTEM_PROMPT)
-            trajectory = Trajectory.from_structured_output(payload, limit=self.max_waypoints)
+            payload = self.agent.run(
+                prompt, TRAJECTORY_SCHEMA, system=NAV_SYSTEM_PROMPT
+            )
+            trajectory = Trajectory.from_structured_output(
+                payload, limit=self.max_waypoints
+            )
             if not trajectory.actions:
                 raise ValueError("agent returned no usable actions")
             return trajectory
@@ -60,14 +72,19 @@ class WaypointNavigator(Policy):
             if self.cancelled:
                 raise  # the user quit mid-call; the engine has stopped caring
             self.failures += 1
-            self.log.log(f"call {state.calls + 1}: agent call failed ({exc}); this turn does not move", stage="navigation:agent")
+            self.log.log(
+                f"call {state.calls + 1}: agent call failed ({exc}); "
+                f"this turn does not move",
+                stage="navigation:agent",
+            )
             return Trajectory([], reasoning=f"call failed: {exc}")
 
     # ------------------------------------------------------------------ prompt
 
     def build_prompt(self, state: State, memory: SpatialMemory) -> str:
         return nav_user_prompt(
-            state, memory,
+            state,
+            memory,
             sensor_range=self.sensor_range,
             max_waypoints=self.max_waypoints,
             max_segment=self.max_segment,

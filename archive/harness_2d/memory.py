@@ -30,8 +30,10 @@ class FogMemory:
     revision: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
-        self.grid = [bytearray(int(Tile.UNKNOWN) for _ in range(self.width))
-                     for _ in range(self.height)]
+        self.grid = [
+            bytearray(int(Tile.UNKNOWN) for _ in range(self.width))
+            for _ in range(self.height)
+        ]
 
     # ------------------------------------------------------------------ update
 
@@ -92,8 +94,14 @@ class FogMemory:
 
     # ----------------------------------------------------------------- routing
 
-    def plan(self, start: Vector2D, is_goal: Callable[[Vector2D], bool],
-             *, allow_unknown: bool = True, limit: int = 4096) -> list[Direction] | None:
+    def plan(
+        self,
+        start: Vector2D,
+        is_goal: Callable[[Vector2D], bool],
+        *,
+        allow_unknown: bool = True,
+        limit: int = 4096,
+    ) -> list[Direction] | None:
         """Shortest route over remembered cells to the first cell matching `is_goal`.
 
         Unknown cells are optimistically treated as walkable: that is what makes
@@ -103,7 +111,9 @@ class FogMemory:
         """
         if is_goal(start):
             return []
-        seen: dict[tuple[int, int], tuple[Vector2D, Direction] | None] = {start.as_tuple(): None}
+        seen: dict[tuple[int, int], tuple[Vector2D, Direction] | None] = {
+            start.as_tuple(): None
+        }
         queue: deque[Vector2D] = deque([start])
         expanded = 0
         while queue and expanded < limit:
@@ -115,7 +125,9 @@ class FogMemory:
                     continue
                 if not (0 <= nxt.row < self.height and 0 <= nxt.col < self.width):
                     continue
-                walkable = self.is_known_open(nxt) or (allow_unknown and self.is_unknown(nxt))
+                walkable = self.is_known_open(nxt) or (
+                    allow_unknown and self.is_unknown(nxt)
+                )
                 if not walkable:
                     continue
                 seen[nxt.as_tuple()] = (cur, direction)
@@ -135,7 +147,9 @@ class FogMemory:
 
     # --------------------------------------------------------------- rendering
 
-    def render(self, player: Vector2D, *, marks: Iterable[tuple[Vector2D, str]] = ()) -> str:
+    def render(
+        self, player: Vector2D, *, marks: Iterable[tuple[Vector2D, str]] = ()
+    ) -> str:
         """The remembered map as text, with column rulers and the player marked."""
         overlay = {pos.as_tuple(): glyph for pos, glyph in marks}
         overlay[player.as_tuple()] = "P"
@@ -143,6 +157,8 @@ class FogMemory:
         units = "".join(str(c % 10) for c in range(self.width))
         lines = [f"     {tens}", f"     {units}"]
         for r, row in enumerate(self.grid):
-            cells = [overlay.get((r, c), GLYPHS.get(cell, "?")) for c, cell in enumerate(row)]
+            cells = [
+                overlay.get((r, c), GLYPHS.get(cell, "?")) for c, cell in enumerate(row)
+            ]
             lines.append(f"{r:>4} " + "".join(cells))
         return "\n".join(lines)

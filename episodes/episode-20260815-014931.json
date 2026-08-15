@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/room-the-scholar-s-study-telescope-20260815-014026.json",
+  "world": "worlds/room-the-scholar-s-study-telescope-20260815-014026.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 6,

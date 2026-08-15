@@ -5,7 +5,6 @@ description = "Agent harness that generates game environments and then plays the
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "pytest>=8.0",
     "hydra-core>=1.3",
     "ursina>=8.0",
 ]
@@ -17,3 +16,9 @@ build-backend = "setuptools.build_meta"
 # Modular packages under src/: agents, engine, geometry, navigation, prompts, world
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# `logger` is a leaf module, not a package: every package logs, so it must not live
+# inside one of them (importing `agents` would then drag in `engine`, and `engine`
+# imports `agents` back — a cycle). `packages.find` does not discover loose modules.
+[tool.setuptools]
+py-modules = ["logger"]

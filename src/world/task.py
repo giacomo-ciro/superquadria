@@ -1,4 +1,5 @@
-"""The shape-matching task: embossed locks, multi-primitive keys, and runtime pickup/placement.
+"""The shape-matching task: embossed locks, multi-primitive keys, and runtime
+pickup/placement.
 
 Every room on the task path specifies a `key_concept` (e.g. 'guitar', 'tree', 'chair').
 One of the multi-primitive assemblies in the room is the key matching that concept.
@@ -8,28 +9,25 @@ assembly, carries it to the door, and unlocks it.
 """
 
 from geometry import Vec3
-from geometry.superquadrics import DOOR, LOCK, OBJECT, PORTAL, Superquadric, SuperquadricHandler
+from geometry.superquadrics import DOOR, LOCK, PORTAL, Superquadric, SuperquadricHandler
+
 from .layout import IN_PLANE, Door, Room, WorldConfig
 from .scene import Scene
 
 LOCK_COLOR = (1.00, 0.85, 0.10)
 DEFAULT_REACH = 2.5
-STRUCTURAL_ASSEMBLIES = {"wall", "floor", "ceiling", "door", "frame"}
-
-
-def matches(obj, lock, tol_scale: float = 0.05, tol_exp: float = 0.05) -> bool:
-    """Parametric match comparison helper."""
-    if hasattr(obj, "scale") and hasattr(lock, "scale"):
-        return (all(abs(a - b) <= tol_scale for a, b in zip(obj.scale, lock.scale))
-                and all(abs(a - b) <= tol_exp for a, b in zip(obj.exponents, lock.exponents)))
-    return False
 
 
 # ------------------------------------------------------------------ lock building
 
 
-def build_lock(door: Door, room: Room, key_prims: list[Superquadric],
-               handler: SuperquadricHandler, cfg: WorldConfig) -> list[Superquadric]:
+def build_lock(
+    door: Door,
+    room: Room,
+    key_prims: list[Superquadric],
+    handler: SuperquadricHandler,
+    cfg: WorldConfig,
+) -> list[Superquadric]:
     """Build an embossed relief lock on the door representing the key assembly.
 
     Scales down the key primitives to fit as an emblem on the door slab at ~0.62 height,
@@ -70,7 +68,9 @@ def build_lock(door: Door, room: Room, key_prims: list[Superquadric],
     lock_primitives = []
     for prim in key_prims:
         rel_pos = prim.position - center
-        scaled_rel = Vec3(rel_pos.x * scale_factor, rel_pos.y * scale_factor, rel_pos.z * scale_factor)
+        scaled_rel = Vec3(
+            rel_pos.x * scale_factor, rel_pos.y * scale_factor, rel_pos.z * scale_factor
+        )
         new_pos = door_target + scaled_rel
         scaled_size = tuple(round(max(0.01, a * scale_factor), 4) for a in prim.scale)
 
@@ -93,11 +93,21 @@ def build_lock(door: Door, room: Room, key_prims: list[Superquadric],
 # -------------------------------------------------------------- runtime rules
 
 
-STRUCTURAL_KEYWORDS = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+STRUCTURAL_KEYWORDS = (
+    "wall",
+    "floor",
+    "ceiling",
+    "door",
+    "frame",
+    "portal",
+    "lock",
+    "shell",
+)
 
 
 def is_pickable(prim: Superquadric) -> bool:
-    """Is this primitive an interactable object/furniture rather than structural architecture?"""
+    """Is this primitive an interactable object/furniture rather than structural
+    architecture?"""
     if prim.kind in (DOOR, PORTAL, LOCK):
         return False
     assembly_lower = prim.assembly.lower()
@@ -106,22 +116,9 @@ def is_pickable(prim: Superquadric) -> bool:
     return True
 
 
-def try_pickup(scene: Scene, prim_id: int) -> bool:
-    """Pick up an object by ID, if the inventory is empty."""
-    if scene.player.carrying is not None and len(scene.player.carrying) > 0:
-        return False
-    prim = scene.primitives.get(prim_id)
-    if not is_pickable(prim):
-        return False
-    target_assembly = prim.assembly
-    assembly_prims = [p for p in list(scene.primitives) if p.assembly == target_assembly]
-    for p in assembly_prims:
-        scene.primitives.remove(p.id)
-    scene.player.carrying = assembly_prims
-    return True
-
-
-def pick_at(scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH) -> tuple[bool, str]:
+def pick_at(
+    scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH
+) -> tuple[bool, str]:
     """Pick up the whole assembly at or near `target`.
 
     Must be within `reach` of the player.
@@ -149,7 +146,9 @@ def pick_at(scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH) -> tupl
     candidates.sort(key=lambda item: item[0])
     chosen = candidates[0][2]
     target_assembly = chosen.assembly
-    assembly_prims = [p for p in list(scene.primitives) if p.assembly == target_assembly]
+    assembly_prims = [
+        p for p in list(scene.primitives) if p.assembly == target_assembly
+    ]
 
     for p in assembly_prims:
         scene.primitives.remove(p.id)
@@ -158,9 +157,16 @@ def pick_at(scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH) -> tupl
     return True, f"picked up {target_assembly}"
 
 
-def place_at(scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH,
-             tol_scale: float = 0.05, tol_exp: float = 0.05) -> tuple[bool, str, str | None]:
-    """Place the carried assembly at `target`, or attempt unlock if target or player is near a door/lock.
+def place_at(
+    scene: Scene,
+    target: Vec3,
+    *,
+    reach: float = DEFAULT_REACH,
+    tol_scale: float = 0.05,
+    tol_exp: float = 0.05,
+) -> tuple[bool, str, str | None]:
+    """Place the carried assembly at `target`, or attempt unlock if target or
+    player is near a door/lock.
 
     Returns (success, description, door_result: 'opened' | 'locked' | None).
     """
@@ -170,25 +176,40 @@ def place_at(scene: Scene, target: Vec3, *, reach: float = DEFAULT_REACH,
 
     player_pos = scene.player.position
     if (target - player_pos).length() > reach:
-        return False, f"target is too far ({player_pos.distance_to(target):.1f} > reach {reach:.1f})", None
+        return (
+            False,
+            f"target is too far ({player_pos.distance_to(target):.1f} > "
+            f"reach {reach:.1f})",
+            None,
+        )
 
     # Check if target or player is near a DOOR or LOCK
     door_or_lock = None
     for prim in scene.primitives:
         if prim.kind in (DOOR, LOCK):
-            if (prim.position - target).length() <= reach or (prim.position - player_pos).length() <= reach:
+            if (prim.position - target).length() <= reach or (
+                prim.position - player_pos
+            ).length() <= reach:
                 door_or_lock = prim
                 break
 
     if door_or_lock is not None:
-        opened = attempt_unlock(scene, door_or_lock.id, tol_scale=tol_scale, tol_exp=tol_exp)
+        opened = attempt_unlock(
+            scene, door_or_lock.id, tol_scale=tol_scale, tol_exp=tol_exp
+        )
         if opened:
             return True, "unlocked the door with the carried object", "opened"
         else:
-            return True, "tried the locked door — mismatch, carried object was destroyed", "locked"
+            return (
+                True,
+                "tried the locked door — mismatch, carried object was destroyed",
+                "locked",
+            )
 
     # Otherwise place down in the room preserving relative geometry
-    centroid = sum((p.position for p in carrying), Vec3(0, 0, 0)) * (1.0 / len(carrying))
+    centroid = sum((p.position for p in carrying), Vec3(0, 0, 0)) * (
+        1.0 / len(carrying)
+    )
     delta = target - centroid
     for prim in carrying:
         prim.position = prim.position + delta
@@ -210,7 +231,9 @@ def task_for_door_or_lock(scene: Scene, prim_id: int) -> dict | None:
     return None
 
 
-def attempt_unlock(scene: Scene, prim_id: int, *, tol_scale: float = 0.05, tol_exp: float = 0.05) -> bool:
+def attempt_unlock(
+    scene: Scene, prim_id: int, *, tol_scale: float = 0.05, tol_exp: float = 0.05
+) -> bool:
     """Try the carried assembly against a door or its lock.
 
     Always clears inventory. If the carried assembly matches the task's key,
@@ -229,9 +252,8 @@ def attempt_unlock(scene: Scene, prim_id: int, *, tol_scale: float = 0.05, tol_e
     key_concept = task.get("key_concept", "")
 
     # Match by assembly ID, name, or concept
-    is_match = (
-        carried_assembly == target_assembly
-        or (key_concept and key_concept.lower() in carried_assembly.lower())
+    is_match = carried_assembly == target_assembly or (
+        key_concept and key_concept.lower() in carried_assembly.lower()
     )
 
     if is_match:

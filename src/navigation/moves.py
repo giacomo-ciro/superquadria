@@ -53,8 +53,14 @@ class Trajectory:
     reasoning: str = ""
     raw: dict = field(default_factory=dict)
 
-    def __init__(self, actions_or_positions=(), *, steer: bool = True,
-                 reasoning: str = "", raw: dict | None = None):
+    def __init__(
+        self,
+        actions_or_positions=(),
+        *,
+        steer: bool = True,
+        reasoning: str = "",
+        raw: dict | None = None,
+    ):
         self.steer = steer
         self.reasoning = reasoning
         self.raw = raw if raw is not None else {}
@@ -76,7 +82,9 @@ class Trajectory:
         return len(self.actions)
 
     @classmethod
-    def from_structured_output(cls, payload: dict, *, limit: int = MAX_WAYPOINTS) -> "Trajectory":
+    def from_structured_output(
+        cls, payload: dict, *, limit: int = MAX_WAYPOINTS
+    ) -> "Trajectory":
         """Parse the agent's JSON, tolerating minor shape drift."""
         actions: list[Action] = []
         raw_actions = payload.get("actions")
@@ -87,7 +95,9 @@ class Trajectory:
                         actions.append(Action.from_dict(item))
                     except (ValueError, TypeError):
                         break
-            return cls(actions, reasoning=str(payload.get("reasoning", ""))[:400], raw=payload)
+            return cls(
+                actions, reasoning=str(payload.get("reasoning", ""))[:400], raw=payload
+            )
 
         # Fallback to legacy "positions" if returned
         raw_positions = payload.get("positions") or []
@@ -100,7 +110,9 @@ class Trajectory:
                 actions.append(Action(type=MOVE, target=Vec3.parse(item)))
             except (ValueError, TypeError):
                 break
-        return cls(actions, reasoning=str(payload.get("reasoning", ""))[:400], raw=payload)
+        return cls(
+            actions, reasoning=str(payload.get("reasoning", ""))[:400], raw=payload
+        )
 
 
 #: JSON Schema pinned for the navigation agent.
@@ -116,14 +128,21 @@ TRAJECTORY_SCHEMA: dict = {
                     "type": {
                         "type": "string",
                         "enum": ["move", "pick", "place"],
-                        "description": "'move' flies to target; 'pick' picks up object at target (within reach); 'place' places carried object at target or unlocks if at door/lock.",
+                        "description": (
+                            "'move' flies to target; 'pick' picks up object at "
+                            "target (within reach); 'place' places carried object "
+                            "at target or unlocks if at door/lock."
+                        ),
                     },
                     "target": {
                         "type": "array",
                         "items": {"type": "number"},
                         "minItems": 3,
                         "maxItems": 3,
-                        "description": "Absolute world-space destination or object coordinate [x, y, z].",
+                        "description": (
+                            "Absolute world-space destination or object "
+                            "coordinate [x, y, z]."
+                        ),
                     },
                 },
                 "required": ["type", "target"],
@@ -132,7 +151,10 @@ TRAJECTORY_SCHEMA: dict = {
             "minItems": 1,
             "maxItems": MAX_WAYPOINTS,
         },
-        "reasoning": {"type": "string", "description": "One sentence on what this batch is for."},
+        "reasoning": {
+            "type": "string",
+            "description": "One sentence on what this batch is for.",
+        },
     },
     "required": ["actions", "reasoning"],
     "additionalProperties": False,

@@ -1,5 +1,5 @@
 {
-  "world": "worlds_3d/the-saltwind-chandlery.json",
+  "world": "worlds/the-saltwind-chandlery.json",
   "solved": true,
   "reason": "reached the exit",
   "calls": 24,

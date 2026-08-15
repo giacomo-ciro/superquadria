@@ -75,14 +75,21 @@ class FrontierPolicy(Policy):
             target = memory.key_position
             path = memory.plan(here, lambda p: p == target)
             if path:
-                return Move(path[: self._max_steps], reasoning=f"key seen at {target}; closing in")
+                return Move(
+                    path[: self._max_steps],
+                    reasoning=f"key seen at {target}; closing in",
+                )
 
         path = memory.plan(here, memory.is_unknown)
         if path:
-            return Move(path[: self._max_steps], reasoning="heading for the nearest unseen cell")
+            return Move(
+                path[: self._max_steps], reasoning="heading for the nearest unseen cell"
+            )
 
         # Fully explored (or boxed in): jiggle so the episode can still end.
-        return Move([self._rng.choice(list(Direction))], reasoning="no frontier left; probing")
+        return Move(
+            [self._rng.choice(list(Direction))], reasoning="no frontier left; probing"
+        )
 
 
 class ManualPolicy(Policy):

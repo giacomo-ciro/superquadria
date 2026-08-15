@@ -20,23 +20,24 @@ implemented by driving an interactive coding CLI (`claude` or `codex`, chosen by
 ## Layout
 
 Modular packages under [src/](src/):
-- [agents/](src/agents/): the `Agent` interface, the shared `TmuxAgent`, and the `claude`/`codex` backends
+- [agents/](src/agents/): the `Agent` base class, and the `claude`/`codex` backends
 - [geometry/](src/geometry/): 3D vectors, superquadric primitives, meshing, collision, and sensor
 - [world/](src/world/): floor plan layout, architectural shell, task objects, scene model, world generation
 - [navigation/](src/navigation/): parameter observations, spatial memory, waypoints, and flight policies
 - [prompts/](src/prompts/): decoupled prompt templates for layout, room furnishing, and navigation
-- [engine/](src/engine/): observe-plan-fly loop, Ursina renderer, config loader, pipeline logging, CLI
+- [engine/](src/engine/): observe-plan-fly loop, Ursina renderer, config loader, CLI
+- [logger.py](src/logger.py): structured logging — a leaf module, since every package logs
 
-The harness is launched via `python -m engine` and reads `configs/3d.yaml`.
+The harness is launched via `python -m engine` and reads `configs/config.yaml`.
 
 | Package | Role | Key Modules |
 | --- | --- | --- |
-| [agents/](src/agents/) | Agent CLI abstraction | `base.py`, `tmux_agent.py`, `claude_tmux.py`, `codex_tmux.py` |
+| [agents/](src/agents/) | Agent CLI abstraction | `base.py`, `claude.py`, `codex.py` |
 | [geometry/](src/geometry/) | Math & superquadrics | `geometry.py`, `superquadrics.py` |
 | [world/](src/world/) | World & generation | `layout.py`, `shell.py`, `task.py`, `scene.py`, `generation.py` |
 | [navigation/](src/navigation/) | Observation & policy | `state.py`, `memory.py`, `moves.py`, `policies.py`, `navigation.py` |
 | [prompts/](src/prompts/) | Prompt engineering | `layout.py`, `room.py`, `navigation.py` |
-| [engine/](src/engine/) | Execution & CLI | `engine.py`, `render.py`, `config.py`, `pipeline_log.py`, `cli.py` |
+| [engine/](src/engine/) | Execution & CLI | `engine.py`, `render.py`, `config.py`, `cli.py` |
 
 Rules:
 - **The agent sees parameters, not pixels.** This is a deliberate departure from
@@ -68,7 +69,7 @@ uv sync                              # Python >=3.12, deps in pyproject.toml
 python -m engine generate --offline  # procedural world, zero agent calls
 python -m engine run --offline       # procedural building + manual flight (smoke test)
 python -m engine run                 # agent generates, agent flies
-python -m engine play                # pick a saved world under worlds_3d/
+python -m engine play                # pick a saved world under worlds/
 python -m engine replay              # re-watch a saved episode
 ```
 

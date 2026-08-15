@@ -36,10 +36,15 @@ import math
 import random
 import time
 
-from geometry import Vec3, look_angles, look_vector
 from engine.render import BACKGROUND, _matte_shader
-from geometry.superquadrics import (KEY, OBSTACLE, Sensor, Superquadric,
-                                   SuperquadricHandler, build_mesh)
+from geometry import Vec3, look_angles, look_vector
+from geometry.superquadrics import (
+    KEY,
+    OBSTACLE,
+    Sensor,
+    Superquadric,
+    SuperquadricHandler,
+)
 
 MESH_RESOLUTION = 16
 COLLISION_RESOLUTION = 8
@@ -58,18 +63,36 @@ DECOY_COLOR = (0.95, 0.15, 0.15)
 LOCK_COLOR = (1.00, 0.85, 0.10)
 #: Stand-in for a room's generated palette — deliberately nothing near the task
 #: hues, which is the constraint the room call will have to carry.
-FURNITURE_PALETTE = [(0.55, 0.42, 0.30), (0.30, 0.45, 0.50),
-                     (0.45, 0.40, 0.55), (0.35, 0.50, 0.42)]
+FURNITURE_PALETTE = [
+    (0.55, 0.42, 0.30),
+    (0.30, 0.45, 0.50),
+    (0.45, 0.40, 0.55),
+    (0.35, 0.50, 0.42),
+]
 
-ROOM_NAMES = ["Copper Galley", "Ash Stair", "Slate Parlour", "Amber Vault",
-              "Cinder Hall", "Quill Study", "Lime Pantry", "Iron Landing",
-              "Moss Atrium", "Chalk Gallery", "Rust Workshop", "Pearl Solar"]
+ROOM_NAMES = [
+    "Copper Galley",
+    "Ash Stair",
+    "Slate Parlour",
+    "Amber Vault",
+    "Cinder Hall",
+    "Quill Study",
+    "Lime Pantry",
+    "Iron Landing",
+    "Moss Atrium",
+    "Chalk Gallery",
+    "Rust Workshop",
+    "Pearl Solar",
+]
 
 
 # ------------------------------------------------------------------- the knobs
 
+
 class Knob:
-    def __init__(self, name, value, step, lo, hi, fmt="{:.2f}", geometric=True, help=""):
+    def __init__(
+        self, name, value, step, lo, hi, fmt="{:.2f}", geometric=True, help=""
+    ):
         self.name, self.value, self.step = name, value, step
         self.lo, self.hi, self.fmt, self.geometric = lo, hi, fmt, geometric
         self.help = help
@@ -96,9 +119,11 @@ def print_knob_guide(knobs):
     for knob in knobs:
         span = f"{knob.fmt.format(knob.lo)} .. {knob.fmt.format(knob.hi)}"
         print(f"  {knob.name:<17}{knob.text():>7}   {span:<14} {knob.help}")
-    print("\n  up/down picks one, left/right moves it. Watch the right-hand panel: it "
-          "turns anything\n  broken into a '!' warning line, which is faster than "
-          "reasoning about the numbers.\n")
+    print(
+        "\n  up/down picks one, left/right moves it. Watch the right-hand panel: it "
+        "turns anything\n  broken into a '!' warning line, which is faster than "
+        "reasoning about the numbers.\n"
+    )
 
 
 #: Which `configs/3d.yaml` section each knob lands in, and under what key where
@@ -106,12 +131,27 @@ def print_knob_guide(knobs):
 #: and gets printed commented out — derived that way round on purpose, so adding
 #: a knob can never silently drop it from the dump.
 DESTINATIONS = [
-    ("world", {"bounds": "bounds", "grid_unit": "grid_unit", "level_height": "level_height",
-               "wall_thickness": "wall_thickness", "door_width": "door_width",
-               "door_height": "door_height", "player_radius": "player_radius",
-               "levels": "levels"}),
-    ("generation", {"object_scale_min": "object_scale_min",
-                    "object_scale_max": "object_scale_max", "decoys": "decoys"}),
+    (
+        "world",
+        {
+            "bounds": "bounds",
+            "grid_unit": "grid_unit",
+            "level_height": "level_height",
+            "wall_thickness": "wall_thickness",
+            "door_width": "door_width",
+            "door_height": "door_height",
+            "player_radius": "player_radius",
+            "levels": "levels",
+        },
+    ),
+    (
+        "generation",
+        {
+            "object_scale_min": "object_scale_min",
+            "object_scale_max": "object_scale_max",
+            "decoys": "decoys",
+        },
+    ),
     ("sensor", {"sensor_fov": "fov"}),
     ("episode", {"move_increment": "move_increment", "max_segment": "max_segment"}),
 ]
@@ -134,59 +174,183 @@ def default_knobs():
     """
     i = "{:.0f}"
     return [
-        Knob("bounds", 60.0, 2.0, 12.0, 120.0, i,
-             help="side of the world cube — the whole building's floor plate and height"),
-        Knob("grid_unit", 4.0, 0.5, 1.0, 10.0,
-             help="layout grid cell; rooms are whole multiples, so it sets how "
-                  "coarsely room sizes can vary"),
-        Knob("level_height", 5.0, 0.25, 2.0, 12.0,
-             help="floor-to-floor height of one storey; the ceiling you fly under is "
-                  "this minus wall_thickness"),
-        Knob("wall_thickness", 0.4, 0.05, 0.05, 2.0,
-             help="thickness of every wall, floor and ceiling slab"),
-        Knob("door_width", 3.0, 0.25, 0.5, 8.0,
-             help="doorway width; under ~2x the player diameter it gets hard to thread"),
-        Knob("door_height", 4.0, 0.25, 1.0, 10.0,
-             help="doorway height; silently clamped to level_height - wall_thickness"),
-        Knob("player_radius", 0.6, 0.05, 0.1, 2.0,
-             help="the player is a sphere this big — every clearance is relative to it, "
-                  "so this is the scale of the world"),
-        Knob("object_scale_min", 0.30, 0.05, 0.05, 3.0,
-             help="smallest semiaxis a peg or decoy can have"),
-        Knob("object_scale_max", 0.90, 0.05, 0.05, 4.0,
-             help="largest semiaxis a peg or decoy can have; big objects crowd a small "
-                  "room until nothing fits"),
-        Knob("rooms_per_level", 6, 1, 1, 24, i,
-             help="how many rooms each floor is cut into — more rooms, smaller rooms"),
-        Knob("levels", 2, 1, 1, 5, i,
-             help="storeys stacked inside the cube"),
-        Knob("decoys", 3, 1, 0, 12, i,
-             help="wrong-shaped objects sharing the room with the one true peg"),
-        Knob("furniture", 10, 1, 0, 40, i,
-             help="obstacles in the spawn room; this is what makes finding the peg "
-                  "take actual searching"),
-        Knob("seed", 0, 1, 0, 999, i,
-             help="which world you get — step it to test a decision across worlds "
-                  "rather than one lucky layout"),
-        Knob("sensor_fov", 60.0, 5.0, 20.0, 140.0, i,
-             help="horizontal field of view in degrees, for the sensor and this camera"),
-        Knob("move_increment", 0.5, 0.05, 0.05, 3.0,
-             help="collision sampling step; above 2*player_radius + wall_thickness the "
-                  "player tunnels straight through walls"),
-        Knob("max_segment", 15.0, 1.0, 1.0, 60.0,
-             help="furthest a single waypoint may be; longer than a room span and "
-                  "waypoints overshoot into walls"),
-        Knob("wall_grey", 0.35, 0.02, 0.02, 1.0, geometric=False,
-             help="brightness of walls, floors and ceilings"),
-        Knob("door_grey", 0.71, 0.02, 0.02, 1.0, geometric=False,
-             help="brightness of the door leaf; at wall_grey the door vanishes into "
-                  "the wall and only the lock marks it"),
-        Knob("furniture_grey", 1.0, 1.0, 0.0, 1.0, i, geometric=False,
-             help="1 renders furniture grey like structure, 0 in the room's palette"),
+        Knob(
+            "bounds",
+            60.0,
+            2.0,
+            12.0,
+            120.0,
+            i,
+            help="side of the world cube — the whole building's floor plate and height",
+        ),
+        Knob(
+            "grid_unit",
+            4.0,
+            0.5,
+            1.0,
+            10.0,
+            help="layout grid cell; rooms are whole multiples, so it sets how "
+            "coarsely room sizes can vary",
+        ),
+        Knob(
+            "level_height",
+            5.0,
+            0.25,
+            2.0,
+            12.0,
+            help="floor-to-floor height of one storey; the ceiling you fly under is "
+            "this minus wall_thickness",
+        ),
+        Knob(
+            "wall_thickness",
+            0.4,
+            0.05,
+            0.05,
+            2.0,
+            help="thickness of every wall, floor and ceiling slab",
+        ),
+        Knob(
+            "door_width",
+            3.0,
+            0.25,
+            0.5,
+            8.0,
+            help="doorway width; under ~2x the player diameter it gets hard to thread",
+        ),
+        Knob(
+            "door_height",
+            4.0,
+            0.25,
+            1.0,
+            10.0,
+            help="doorway height; silently clamped to level_height - wall_thickness",
+        ),
+        Knob(
+            "player_radius",
+            0.6,
+            0.05,
+            0.1,
+            2.0,
+            help="the player is a sphere this big — every clearance is relative to it, "
+            "so this is the scale of the world",
+        ),
+        Knob(
+            "object_scale_min",
+            0.30,
+            0.05,
+            0.05,
+            3.0,
+            help="smallest semiaxis a peg or decoy can have",
+        ),
+        Knob(
+            "object_scale_max",
+            0.90,
+            0.05,
+            0.05,
+            4.0,
+            help="largest semiaxis a peg or decoy can have; big objects crowd a small "
+            "room until nothing fits",
+        ),
+        Knob(
+            "rooms_per_level",
+            6,
+            1,
+            1,
+            24,
+            i,
+            help="how many rooms each floor is cut into — more rooms, smaller rooms",
+        ),
+        Knob("levels", 2, 1, 1, 5, i, help="storeys stacked inside the cube"),
+        Knob(
+            "decoys",
+            3,
+            1,
+            0,
+            12,
+            i,
+            help="wrong-shaped objects sharing the room with the one true peg",
+        ),
+        Knob(
+            "furniture",
+            10,
+            1,
+            0,
+            40,
+            i,
+            help="obstacles in the spawn room; this is what makes finding the peg "
+            "take actual searching",
+        ),
+        Knob(
+            "seed",
+            0,
+            1,
+            0,
+            999,
+            i,
+            help="which world you get — step it to test a decision across worlds "
+            "rather than one lucky layout",
+        ),
+        Knob(
+            "sensor_fov",
+            60.0,
+            5.0,
+            20.0,
+            140.0,
+            i,
+            help="horizontal field of view in degrees, for the sensor and this camera",
+        ),
+        Knob(
+            "move_increment",
+            0.5,
+            0.05,
+            0.05,
+            3.0,
+            help="collision sampling step; above 2*player_radius + wall_thickness the "
+            "player tunnels straight through walls",
+        ),
+        Knob(
+            "max_segment",
+            15.0,
+            1.0,
+            1.0,
+            60.0,
+            help="furthest a single waypoint may be; longer than a room span and "
+            "waypoints overshoot into walls",
+        ),
+        Knob(
+            "wall_grey",
+            0.35,
+            0.02,
+            0.02,
+            1.0,
+            geometric=False,
+            help="brightness of walls, floors and ceilings",
+        ),
+        Knob(
+            "door_grey",
+            0.71,
+            0.02,
+            0.02,
+            1.0,
+            geometric=False,
+            help="brightness of the door leaf; at wall_grey the door vanishes into "
+            "the wall and only the lock marks it",
+        ),
+        Knob(
+            "furniture_grey",
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            i,
+            geometric=False,
+            help="1 renders furniture grey like structure, 0 in the room's palette",
+        ),
     ]
 
 
 # ----------------------------------------------------------------- the layout
+
 
 class Room:
     """A levelled 2D footprint on the integer grid, exactly as LAYOUT_SCHEMA."""
@@ -199,8 +363,10 @@ class Room:
         """World-space (lo, hi) of the shell planes bounding this room."""
         g, half = k["grid_unit"], k["bounds"] / 2
         y0 = -half + self.level * k["level_height"]
-        return ((-half + self.ix0 * g, y0, -half + self.iz0 * g),
-                (-half + self.ix1 * g, y0 + k["level_height"], -half + self.iz1 * g))
+        return (
+            (-half + self.ix0 * g, y0, -half + self.iz0 * g),
+            (-half + self.ix1 * g, y0 + k["level_height"], -half + self.iz1 * g),
+        )
 
     def interior(self, k):
         """The free volume: the shell box inset by half a wall on every face."""
@@ -221,8 +387,11 @@ def partition(rng, cells, count, min_cells):
     """
     rects = [(0, 0, cells, cells)]
     while len(rects) < count:
-        splittable = [r for r in rects
-                      if r[2] - r[0] >= 2 * min_cells or r[3] - r[1] >= 2 * min_cells]
+        splittable = [
+            r
+            for r in rects
+            if r[2] - r[0] >= 2 * min_cells or r[3] - r[1] >= 2 * min_cells
+        ]
         if not splittable:
             break
         u0, v0, u1, v1 = max(splittable, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
@@ -247,9 +416,20 @@ def build_rooms(k, rng):
     min_cells = max(2, math.ceil((k["door_width"] + 2 * k["wall_thickness"]) / g) + 1)
     rooms, index = [], 0
     for level in range(int(k["levels"])):
-        for ix0, iz0, ix1, iz1 in partition(rng, cells, int(k["rooms_per_level"]), min_cells):
-            rooms.append(Room(index, ROOM_NAMES[index % len(ROOM_NAMES)],
-                              level, ix0, iz0, ix1, iz1))
+        for ix0, iz0, ix1, iz1 in partition(
+            rng, cells, int(k["rooms_per_level"]), min_cells
+        ):
+            rooms.append(
+                Room(
+                    index,
+                    ROOM_NAMES[index % len(ROOM_NAMES)],
+                    level,
+                    ix0,
+                    iz0,
+                    ix1,
+                    iz1,
+                )
+            )
             index += 1
     return rooms
 
@@ -267,19 +447,30 @@ def adjacencies(k, rooms):
                 continue
             if a.level == b.level:
                 for axis, (a0, a1, b0, b1, oa0, oa1, ob0, ob1) in (
-                        (0, (a.ix0, a.ix1, b.ix0, b.ix1, a.iz0, a.iz1, b.iz0, b.iz1)),
-                        (2, (a.iz0, a.iz1, b.iz0, b.iz1, a.ix0, a.ix1, b.ix0, b.ix1))):
+                    (0, (a.ix0, a.ix1, b.ix0, b.ix1, a.iz0, a.iz1, b.iz0, b.iz1)),
+                    (2, (a.iz0, a.iz1, b.iz0, b.iz1, a.ix0, a.ix1, b.ix0, b.ix1)),
+                ):
                     if a1 != b0 and b1 != a0:
                         continue
                     lo, hi = max(oa0, ob0), min(oa1, ob1)
                     if (hi - lo) * g >= need:
-                        found[(a.index, b.index)] = (axis, a1 if a1 == b0 else a0, lo, hi)
+                        found[(a.index, b.index)] = (
+                            axis,
+                            a1 if a1 == b0 else a0,
+                            lo,
+                            hi,
+                        )
             elif abs(a.level - b.level) == 1:
                 lo_x, hi_x = max(a.ix0, b.ix0), min(a.ix1, b.ix1)
                 lo_z, hi_z = max(a.iz0, b.iz0), min(a.iz1, b.iz1)
                 if (hi_x - lo_x) * g >= need and (hi_z - lo_z) * g >= need:
                     upper = a if a.level > b.level else b
-                    found[(a.index, b.index)] = (1, upper.level, (lo_x, hi_x), (lo_z, hi_z))
+                    found[(a.index, b.index)] = (
+                        1,
+                        upper.level,
+                        (lo_x, hi_x),
+                        (lo_z, hi_z),
+                    )
     return found
 
 
@@ -305,6 +496,7 @@ def task_path(rooms, adj, start=0):
 
 # ------------------------------------------------------------------ the shell
 
+
 def decompose(covered, holes):
     """union(covered) - union(holes) as non-overlapping axis-aligned rectangles.
 
@@ -322,14 +514,19 @@ def decompose(covered, holes):
         run, j = [], 0
         while j < len(vs) - 1:
             cv = (vs[j] + vs[j + 1]) / 2
-            on = (any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
-                  and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes))
+            on = any(
+                r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered
+            ) and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes)
             if on:
                 j0 = j
                 while j < len(vs) - 1:
                     cv = (vs[j] + vs[j + 1]) / 2
-                    if not (any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
-                            and not any(h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes)):
+                    if not (
+                        any(r[0] < cu < r[2] and r[1] < cv < r[3] for r in covered)
+                        and not any(
+                            h[0] < cu < h[2] and h[1] < cv < h[3] for h in holes
+                        )
+                    ):
                         break
                     j += 1
                 run.append((j0, j))
@@ -378,11 +575,17 @@ def build_shell(k, rooms, adj, path):
 
     for room in rooms:
         (x0, y0, z0), (x1, y1, z1) = room.box(k)
-        for axis, coord, rect in ((0, x0, (y0, z0, y1, z1)), (0, x1, (y0, z0, y1, z1)),
-                                  (2, z0, (x0, y0, x1, y1)), (2, z1, (x0, y0, x1, y1)),
-                                  (1, y0, (x0, z0, x1, z1)), (1, y1, (x0, z0, x1, z1))):
-            group = planes.setdefault((axis, round(coord, 6)), {"covered": [], "holes": [],
-                                                                "rooms": set()})
+        for axis, coord, rect in (
+            (0, x0, (y0, z0, y1, z1)),
+            (0, x1, (y0, z0, y1, z1)),
+            (2, z0, (x0, y0, x1, y1)),
+            (2, z1, (x0, y0, x1, y1)),
+            (1, y0, (x0, z0, x1, z1)),
+            (1, y1, (x0, z0, x1, z1)),
+        ):
+            group = planes.setdefault(
+                (axis, round(coord, 6)), {"covered": [], "holes": [], "rooms": set()}
+            )
             group["covered"].append(rect)
             group["rooms"].add(room.index)
 
@@ -400,8 +603,11 @@ def build_shell(k, rooms, adj, path):
             # The plane's in-plane axes are ordered by world axis index, so a
             # wall normal to X reads (Y, Z) and one normal to Z reads (X, Y) —
             # vertical is the *first* pair on one and the second on the other.
-            hole = ((vertical[0], along[0], vertical[1], along[1]) if axis == 0
-                    else (along[0], vertical[0], along[1], vertical[1]))
+            hole = (
+                (vertical[0], along[0], vertical[1], along[1])
+                if axis == 0
+                else (along[0], vertical[0], along[1], vertical[1])
+            )
         else:
             _, level, (lo_x, hi_x), (lo_z, hi_z) = entry
             coord = -half + level * k["level_height"]
@@ -411,8 +617,16 @@ def build_shell(k, rooms, adj, path):
             vertical = None
             hole = (cx - d, cz - d, cx + d, cz + d)
         planes[(axis, round(coord, 6))]["holes"].append(hole)
-        doors.append({"a": a, "b": b, "axis": axis, "coord": coord, "hole": hole,
-                      "vertical": vertical})
+        doors.append(
+            {
+                "a": a,
+                "b": b,
+                "axis": axis,
+                "coord": coord,
+                "hole": hole,
+                "vertical": vertical,
+            }
+        )
 
     prims, roles, next_id = [], {}, 0
     for (axis, coord), group in planes.items():
@@ -424,10 +638,18 @@ def build_shell(k, rooms, adj, path):
             pos[v_axis], scale[v_axis] = (v0 + v1) / 2, (v1 - v0) / 2
             owner = rooms[min(group["rooms"])].name
             face = {0: "wall", 1: "floor", 2: "wall"}[axis]
-            prims.append(Superquadric(id=next_id, kind=OBSTACLE, assembly=f"{owner} {face}",
-                                      position=Vec3(*pos), rotation=(0.0, 0.0, 0.0),
-                                      scale=tuple(scale), exponents=(0.1, 0.1),
-                                      color=(0.0, 0.0, 0.0)))
+            prims.append(
+                Superquadric(
+                    id=next_id,
+                    kind=OBSTACLE,
+                    assembly=f"{owner} {face}",
+                    position=Vec3(*pos),
+                    rotation=(0.0, 0.0, 0.0),
+                    scale=tuple(scale),
+                    exponents=(0.1, 0.1),
+                    color=(0.0, 0.0, 0.0),
+                )
+            )
             roles[next_id] = "wall"
             next_id += 1
 
@@ -440,11 +662,18 @@ def build_shell(k, rooms, adj, path):
         pos[u_axis], scale[u_axis] = (u0 + u1) / 2, (u1 - u0) / 2
         pos[v_axis], scale[v_axis] = (v0 + v1) / 2, (v1 - v0) / 2
         names = (rooms[door["a"]].name, rooms[door["b"]].name)
-        prims.append(Superquadric(id=next_id, kind=OBSTACLE,
-                                  assembly=f"locked door: {names[0]} -> {names[1]}",
-                                  position=Vec3(*pos), rotation=(0.0, 0.0, 0.0),
-                                  scale=tuple(scale), exponents=(0.1, 0.1),
-                                  color=(0.0, 0.0, 0.0)))
+        prims.append(
+            Superquadric(
+                id=next_id,
+                kind=OBSTACLE,
+                assembly=f"locked door: {names[0]} -> {names[1]}",
+                position=Vec3(*pos),
+                rotation=(0.0, 0.0, 0.0),
+                scale=tuple(scale),
+                exponents=(0.1, 0.1),
+                color=(0.0, 0.0, 0.0),
+            )
+        )
         roles[next_id] = "door"
         door["id"] = next_id
         next_id += 1
@@ -453,6 +682,7 @@ def build_shell(k, rooms, adj, path):
 
 
 # ---------------------------------------------------------------- the contents
+
 
 def free_position(rng, interior, radius, taken, avoid, tries=200, floor_y=None):
     """A point in the interior box, clear of everything already placed and of
@@ -463,17 +693,27 @@ def free_position(rng, interior, radius, taken, avoid, tries=200, floor_y=None):
     if x1 - x0 < 2 * radius or z1 - z0 < 2 * radius:
         return None
     for _ in range(tries):
-        y = floor_y if floor_y is not None else rng.uniform(min(y0 + radius, y1),
-                                                            max(y1 - radius, y0))
-        p = Vec3(rng.uniform(x0 + radius, x1 - radius), y,
-                 rng.uniform(z0 + radius, z1 - radius))
+        y = (
+            floor_y
+            if floor_y is not None
+            else rng.uniform(min(y0 + radius, y1), max(y1 - radius, y0))
+        )
+        p = Vec3(
+            rng.uniform(x0 + radius, x1 - radius),
+            y,
+            rng.uniform(z0 + radius, z1 - radius),
+        )
         if any(p.distance_to(q) < r + radius for q, r in taken):
             continue
         # Against the *expanded* volume: testing the centre alone lets a wide
         # piece of furniture straddle the doorway with its middle outside it.
-        if any(all(lo[a] - radius <= c <= hi[a] + radius
-                   for a, c in enumerate(p.as_tuple()))
-               for lo, hi in avoid):
+        if any(
+            all(
+                lo[a] - radius <= c <= hi[a] + radius
+                for a, c in enumerate(p.as_tuple())
+            )
+            for lo, hi in avoid
+        ):
             continue
         return p
     return None
@@ -505,15 +745,24 @@ def build_contents(k, rng, room, doors, next_id, spawn):
         radius = math.sqrt(sum(a * a for a in s))
         # Furniture rests on the floor rather than floating, which is what makes
         # it occlude the way real furniture does.
-        p = free_position(rng, room.interior(k), radius, taken, avoid, floor_y=y0 + s[1])
+        p = free_position(
+            rng, room.interior(k), radius, taken, avoid, floor_y=y0 + s[1]
+        )
         if p is None:
             continue
         taken.append((p, radius))
-        prims.append(Superquadric(id=next_id, kind=OBSTACLE,
-                                  assembly=f"{room.name} furniture-{n}", position=p,
-                                  rotation=(0.0, rng.uniform(0, 360), 0.0), scale=s,
-                                  exponents=(rng.uniform(0.2, 1.2), rng.uniform(0.2, 1.2)),
-                                  color=(0.0, 0.0, 0.0)))
+        prims.append(
+            Superquadric(
+                id=next_id,
+                kind=OBSTACLE,
+                assembly=f"{room.name} furniture-{n}",
+                position=p,
+                rotation=(0.0, rng.uniform(0, 360), 0.0),
+                scale=s,
+                exponents=(rng.uniform(0.2, 1.2), rng.uniform(0.2, 1.2)),
+                color=(0.0, 0.0, 0.0),
+            )
+        )
         roles[next_id] = "furniture"
         next_id += 1
 
@@ -528,10 +777,14 @@ def build_contents(k, rng, room, doors, next_id, spawn):
         for _ in range(rng.choice([1, 1, 2, 3])):
             if rng.random() < 0.6:
                 i = rng.randrange(3)
-                s[i] = min(hi, max(lo, s[i] + rng.choice([-1, 1]) * rng.uniform(0.15, 0.5)))
+                s[i] = min(
+                    hi, max(lo, s[i] + rng.choice([-1, 1]) * rng.uniform(0.15, 0.5))
+                )
             else:
                 i = rng.randrange(2)
-                e[i] = min(2.5, max(0.15, e[i] + rng.choice([-1, 1]) * rng.uniform(0.3, 1.2)))
+                e[i] = min(
+                    2.5, max(0.15, e[i] + rng.choice([-1, 1]) * rng.uniform(0.3, 1.2))
+                )
         shapes.append((tuple(s), tuple(e), "decoy"))
 
     # The label comes from the shuffled order, so `object-0` is never the answer.
@@ -543,7 +796,9 @@ def build_contents(k, rng, room, doors, next_id, spawn):
     for n in sorted(range(len(shapes)), key=lambda i: shapes[i][2] != "peg"):
         s, e, role = shapes[n]
         radius = math.sqrt(sum(a * a for a in s))
-        p = free_position(rng, room.interior(k), radius + k["player_radius"], taken, avoid)
+        p = free_position(
+            rng, room.interior(k), radius + k["player_radius"], taken, avoid
+        )
         if p is None:
             dropped.append(role)
             continue
@@ -551,9 +806,18 @@ def build_contents(k, rng, room, doors, next_id, spawn):
         # judgement made by the observer, so it scales with the player rather
         # than with a constant that swamps the room once objects get small.
         taken.append((p, radius + 2 * k["player_radius"]))
-        prims.append(Superquadric(id=next_id, kind=KEY, assembly=f"object-{n}", position=p,
-                                  rotation=(0.0, rng.uniform(0, 360), 0.0), scale=s,
-                                  exponents=e, color=(0.0, 0.0, 0.0)))
+        prims.append(
+            Superquadric(
+                id=next_id,
+                kind=KEY,
+                assembly=f"object-{n}",
+                position=p,
+                rotation=(0.0, rng.uniform(0, 360), 0.0),
+                scale=s,
+                exponents=e,
+                color=(0.0, 0.0, 0.0),
+            )
+        )
         roles[next_id] = role
         next_id += 1
 
@@ -571,15 +835,25 @@ def build_lock(k, door, room, peg_scale, peg_exp, next_id):
     if door["vertical"] is not None:
         # Mounted at eye height on the leaf rather than at its centre, so it is
         # the first thing read on approach.
-        pos[1] = door["vertical"][0] + (door["vertical"][1] - door["vertical"][0]) * 0.62
+        pos[1] = (
+            door["vertical"][0] + (door["vertical"][1] - door["vertical"][0]) * 0.62
+        )
     inward = 1.0 if room.centre(k).as_tuple()[axis] > coord else -1.0
     pos[axis] = coord + inward * (k["wall_thickness"] / 2 + max(peg_scale) + 0.05)
-    return Superquadric(id=next_id, kind=KEY, assembly="lock", position=Vec3(*pos),
-                        rotation=(0.0, 0.0, 0.0), scale=peg_scale, exponents=peg_exp,
-                        color=LOCK_COLOR)
+    return Superquadric(
+        id=next_id,
+        kind=KEY,
+        assembly="lock",
+        position=Vec3(*pos),
+        rotation=(0.0, 0.0, 0.0),
+        scale=peg_scale,
+        exponents=peg_exp,
+        color=LOCK_COLOR,
+    )
 
 
 # ------------------------------------------------------------------- the world
+
 
 class World:
     def __init__(self, k, rng):
@@ -594,7 +868,8 @@ class World:
 
         first = next((d for d in doors if spawn_room.index in (d["a"], d["b"])), None)
         contents, croles, peg_scale, peg_exp, next_id, dropped = build_contents(
-            k, rng, spawn_room, doors, next_id, self.spawn)
+            k, rng, spawn_room, doors, next_id, self.spawn
+        )
         prims += contents
         roles.update(croles)
         self.peg_scale, self.peg_exp = peg_scale, peg_exp
@@ -605,13 +880,15 @@ class World:
             prims.append(lock)
             roles[lock.id] = "lock"
             # Spawn facing away from the door: the search should not start solved.
-            away = (self.spawn - lock.position)
+            away = self.spawn - lock.position
             self.forward = Vec3(away.x, 0.0, away.z).normalized()
         else:
             self.forward = Vec3(0.0, 0.0, 1.0)
 
         self.roles = roles
-        self.handler = SuperquadricHandler(prims, collision_resolution=COLLISION_RESOLUTION)
+        self.handler = SuperquadricHandler(
+            prims, collision_resolution=COLLISION_RESOLUTION
+        )
         self.walls = sum(1 for r in roles.values() if r == "wall")
 
     def recolour(self, k):
@@ -624,8 +901,11 @@ class World:
             elif role == "door":
                 prim.color = door
             elif role == "furniture":
-                prim.color = ((k["wall_grey"],) * 3 if k["furniture_grey"] >= 0.5 else
-                              FURNITURE_PALETTE[prim.id % len(FURNITURE_PALETTE)])
+                prim.color = (
+                    (k["wall_grey"],) * 3
+                    if k["furniture_grey"] >= 0.5
+                    else FURNITURE_PALETTE[prim.id % len(FURNITURE_PALETTE)]
+                )
             elif role == "peg":
                 prim.color = PEG_COLOR
             elif role == "decoy":
@@ -641,6 +921,7 @@ class World:
 
 # --------------------------------------------------------------------- the app
 
+
 class Calibrator:
     def __init__(self):
         from ursina import Entity, Text, Ursina, camera, color, mouse, window
@@ -650,9 +931,14 @@ class Calibrator:
         self.k = {knob.name: knob.value for knob in self.knobs}
         print_knob_guide(self.knobs)
 
-        self.app = Ursina(title="calibration gate", size=(1400, 820), vsync=True,
-                          development_mode=False, editor_ui_enabled=False,
-                          show_ursina_splash=False)
+        self.app = Ursina(
+            title="calibration gate",
+            size=(1400, 820),
+            vsync=True,
+            development_mode=False,
+            editor_ui_enabled=False,
+            show_ursina_splash=False,
+        )
         window.color = color.rgb(*BACKGROUND)
         self.camera, self.color, self.Entity, self.mouse = camera, color, Entity, mouse
         camera.clip_plane_near = 0.05
@@ -667,14 +953,38 @@ class Calibrator:
         self._last_sensor = 0.0
         self.rebuild_ms = 0.0
 
-        self.hud = Text(parent=camera.ui, text="", position=(-0.86, 0.47), scale=0.7,
-                        color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
-        self.facts = Text(parent=camera.ui, text="", position=(0.30, 0.47), scale=0.7,
-                          color=color.rgba(0.90, 0.92, 0.96, 1.0), font="VeraMono.ttf")
-        self.footer = Text(parent=camera.ui, text="", position=(-0.86, -0.43), scale=0.65,
-                           color=color.rgba(0.55, 0.60, 0.68, 1.0), font="VeraMono.ttf")
-        Text(parent=camera.ui, text="+", position=(0, 0), origin=(0, 0), scale=1.2,
-             color=color.rgba(0.9, 0.9, 0.9, 0.5))
+        self.hud = Text(
+            parent=camera.ui,
+            text="",
+            position=(-0.86, 0.47),
+            scale=0.7,
+            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            font="VeraMono.ttf",
+        )
+        self.facts = Text(
+            parent=camera.ui,
+            text="",
+            position=(0.30, 0.47),
+            scale=0.7,
+            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            font="VeraMono.ttf",
+        )
+        self.footer = Text(
+            parent=camera.ui,
+            text="",
+            position=(-0.86, -0.43),
+            scale=0.65,
+            color=color.rgba(0.55, 0.60, 0.68, 1.0),
+            font="VeraMono.ttf",
+        )
+        Text(
+            parent=camera.ui,
+            text="+",
+            position=(0, 0),
+            origin=(0, 0),
+            scale=1.2,
+            color=color.rgba(0.9, 0.9, 0.9, 0.5),
+        )
 
         Entity(input=self._on_input, update=self._update)
         mouse.locked = True
@@ -701,12 +1011,16 @@ class Calibrator:
             mesh = self.world.handler.mesh_data(prim.id, MESH_RESOLUTION)
             solid = self.world.roles[prim.id] in ("wall", "door", "furniture")
             self.entities[prim.id] = self.Entity(
-                model=Mesh(vertices=mesh.vertices, triangles=mesh.triangles,
-                           normals=mesh.normals,
-                           colors=[self.color.rgba(*prim.color, 1.0)] * len(mesh.vertices)),
+                model=Mesh(
+                    vertices=mesh.vertices,
+                    triangles=mesh.triangles,
+                    normals=mesh.normals,
+                    colors=[self.color.rgba(*prim.color, 1.0)] * len(mesh.vertices),
+                ),
                 # Unlit for the task hues, exactly as the key renders today: flat
                 # full saturation is what keeps red/green/yellow unmistakable.
-                shader=self.shader if solid else unlit_shader)
+                shader=self.shader if solid else unlit_shader,
+            )
         self.camera.fov = self.k["sensor_fov"]
         self.camera.clip_plane_far = self.k["bounds"] * 4
         self.rebuild_ms = (time.perf_counter() - started) * 1000
@@ -715,7 +1029,8 @@ class Calibrator:
         self.world.recolour(self.k)
         for prim in self.world.handler:
             self.entities[prim.id].model.colors = [
-                self.color.rgba(*prim.color, 1.0)] * len(self.entities[prim.id].model.vertices)
+                self.color.rgba(*prim.color, 1.0)
+            ] * len(self.entities[prim.id].model.vertices)
             self.entities[prim.id].model.generate()
 
     # ------------------------------------------------------------------ input
@@ -727,7 +1042,9 @@ class Calibrator:
             self._print_yaml()
             application.quit()
         elif key in ("up arrow", "down arrow"):
-            self.selected = (self.selected + (1 if key == "down arrow" else -1)) % len(self.knobs)
+            self.selected = (self.selected + (1 if key == "down arrow" else -1)) % len(
+                self.knobs
+            )
         elif key in ("left arrow", "right arrow"):
             knob = self.knobs[self.selected]
             if knob.nudge(1 if key == "right arrow" else -1):
@@ -768,14 +1085,21 @@ class Calibrator:
                 blocker = hit.assembly
                 break
             stop = probe
-        self.probe_text = (f"{travelled:.1f}u -> {blocker}" if blocker
-                           else f"{travelled:.1f}u -> clear")
+        self.probe_text = (
+            f"{travelled:.1f}u -> {blocker}"
+            if blocker
+            else f"{travelled:.1f}u -> clear"
+        )
         if self.probe_line is not None:
             destroy(self.probe_line)
         self.probe_line = self.Entity(
-            model=Mesh(vertices=[self.position.as_tuple(), stop.as_tuple()],
-                       mode="line", thickness=3),
-            color=self.color.rgba(1.0, 0.6, 0.1, 0.9))
+            model=Mesh(
+                vertices=[self.position.as_tuple(), stop.as_tuple()],
+                mode="line",
+                thickness=3,
+            ),
+            color=self.color.rgba(1.0, 0.6, 0.1, 0.9),
+        )
 
     def _print_yaml(self):
         """Every knob you can move, grouped by the `configs/3d.yaml` section it
@@ -795,8 +1119,10 @@ class Calibrator:
                 # summary is too far away to stop you pasting it.
                 note = ""
                 if name == "door_height" and door_extent(self.k) < by_name[name].value:
-                    note = (f"   # NOT HONOURED: clamped to {door_extent(self.k):.2f} by "
-                            f"level_height - wall_thickness")
+                    note = (
+                        f"   # NOT HONOURED: clamped to {door_extent(self.k):.2f} by "
+                        f"level_height - wall_thickness"
+                    )
                 print(f"  {key}: {by_name[name].text()}{note}")
                 claimed.add(name)
 
@@ -807,55 +1133,84 @@ class Calibrator:
                 print(f"#   {name + ':':<17}{knob.text():>7}   # {why}")
 
         world, k = self.world, self.k
-        print(f"\n# derived: {len(world.handler)} primitives, {world.walls} shell boxes, "
-              f"{len(world.rooms)} rooms, path {len(world.path)}")
-        print(f"# derived: door {k['door_width']:.2f} x {door_extent(k):.2f}u"
-              f"{' (CLAMPED by the ceiling)' if door_extent(k) < k['door_height'] else ''}, "
-              f"{k['door_width'] / (2 * k['player_radius']):.1f}x the player")
+        print(
+            f"\n# derived: {len(world.handler)} primitives, {world.walls} shell boxes, "
+            f"{len(world.rooms)} rooms, path {len(world.path)}"
+        )
+        clamped = door_extent(k) < k["door_height"]
+        clamped_note = " (CLAMPED by the ceiling)" if clamped else ""
+        print(
+            f"# derived: door {k['door_width']:.2f} x {door_extent(k):.2f}u"
+            f"{clamped_note}, "
+            f"{k['door_width'] / (2 * k['player_radius']):.1f}x the player"
+        )
         if world.dropped:
-            print(f"# derived: {len(world.dropped)} object(s) had nowhere to go"
-                  f"{' INCLUDING THE PEG' if 'peg' in world.dropped else ''}")
+            print(
+                f"# derived: {len(world.dropped)} object(s) had nowhere to go"
+                f"{' INCLUDING THE PEG' if 'peg' in world.dropped else ''}"
+            )
         print()
 
     # ----------------------------------------------------------------- update
 
     def _update(self):
-        from ursina import held_keys, time as utime
+        from ursina import held_keys
+        from ursina import time as utime
 
         if self.mouse.locked:
             self.yaw += self.mouse.velocity[0] * MOUSE_SENSITIVITY
-            self.pitch = max(-89.0, min(89.0, self.pitch - self.mouse.velocity[1]
-                                        * MOUSE_SENSITIVITY))
+            self.pitch = max(
+                -89.0,
+                min(89.0, self.pitch - self.mouse.velocity[1] * MOUSE_SENSITIVITY),
+            )
         ground = look_vector(0.0, self.yaw)
         side = Vec3(ground.z, 0.0, -ground.x)
         move = Vec3(0.0, 0.0, 0.0)
-        for key, vector in (("w", ground), ("s", -ground), ("d", side), ("a", -side),
-                            ("space", Vec3(0, 1, 0)), ("shift", Vec3(0, -1, 0)),
-                            ("left shift", Vec3(0, -1, 0))):
+        for key, vector in (
+            ("w", ground),
+            ("s", -ground),
+            ("d", side),
+            ("a", -side),
+            ("space", Vec3(0, 1, 0)),
+            ("shift", Vec3(0, -1, 0)),
+            ("left shift", Vec3(0, -1, 0)),
+        ):
             if held_keys[key]:
                 move = move + vector
         if move.length_squared() > 0:
             target = self.position + move.normalized() * (FLY_SPEED * utime.dt)
-            if not self.collide or self.world.handler.blocking_primitive(
-                    target, self.k["player_radius"]) is None:
+            if (
+                not self.collide
+                or self.world.handler.blocking_primitive(
+                    target, self.k["player_radius"]
+                )
+                is None
+            ):
                 self.position = target
 
         forward = look_vector(self.pitch, self.yaw)
         self.camera.position = self.position.as_tuple()
         self.camera.rotation = (self.pitch, self.yaw, 0)
 
-        touched = [p for p in self.world.handler
-                   if self.world.roles[p.id] in ("peg", "decoy", "lock")
-                   and self.world.handler.touches(p, self.position, self.k["player_radius"])]
-        self.touching = ", ".join(f"{p.assembly}[{self.world.roles[p.id]}]"
-                                  for p in touched) or "-"
+        touched = [
+            p
+            for p in self.world.handler
+            if self.world.roles[p.id] in ("peg", "decoy", "lock")
+            and self.world.handler.touches(p, self.position, self.k["player_radius"])
+        ]
+        self.touching = (
+            ", ".join(f"{p.assembly}[{self.world.roles[p.id]}]" for p in touched) or "-"
+        )
 
         now = time.perf_counter()
         if now - self._last_sensor > 1.0:
-            sensor = Sensor(range=SENSOR_RANGE, fov=self.k["sensor_fov"],
-                            aspect=SENSOR_ASPECT)
+            sensor = Sensor(
+                range=SENSOR_RANGE, fov=self.k["sensor_fov"], aspect=SENSOR_ASPECT
+            )
             started = time.perf_counter()
-            self.visible = len(self.world.handler.visible_from(self.position, forward, sensor))
+            self.visible = len(
+                self.world.handler.visible_from(self.position, forward, sensor)
+            )
             self.sensor_ms = (time.perf_counter() - started) * 1000
             self._last_sensor = now
         self._draw_hud()
@@ -886,7 +1241,9 @@ class Calibrator:
         if tunnel >= 1.0:
             warn.append("! move_increment can tunnel a wall")
         if k["max_segment"] > median * 1.5:
-            warn.append(f"! max_segment {k['max_segment']:.0f}u vs {median:.0f}u room span")
+            warn.append(
+                f"! max_segment {k['max_segment']:.0f}u vs {median:.0f}u room span"
+            )
         if len(world.path) < 2:
             warn.append("! no task path - spawn room has no doorway")
         if door_extent(k) < k["door_height"] - 1e-9:
@@ -898,26 +1255,33 @@ class Calibrator:
         if world.peg_visible_from_spawn(k):
             warn.append("! peg visible from spawn - no search required")
 
-        self.facts.text = "\n".join([
-            f"rooms        {len(world.rooms)} over {int(k['levels'])} level(s)",
-            f"room span    {median:.0f} x {median_z:.0f} x {interior_h:.1f} u (median)",
-            f"spawn room   {world.spawn_room.name}",
-            f"             {x1 - x0:.1f} x {z1 - z0:.1f} x {y1 - y0:.1f} u",
-            f"task path    {len(world.path)} rooms, {len(world.doors)} doors",
-            f"primitives   {len(world.handler)}  ({world.walls} shell boxes)",
-            f"door clear   {k['door_width']:.2f}u / {diameter:.2f}u player = {clearance:.1f}x",
-            f"lock/peg     scale {tuple(round(a, 2) for a in world.peg_scale)}",
-            f"             exps  {tuple(round(a, 2) for a in world.peg_exp)}",
-            f"visible      {getattr(self, 'visible', 0)} prims in {self.sensor_ms:.1f} ms",
-            f"rebuild      {self.rebuild_ms:.0f} ms",
-            f"touching     {self.touching}",
-            f"probe (e)    {self.probe_text}",
-            "",
-            *warn,
-        ])
-        self.footer.text = ("up/down select   left/right adjust   e probe   c collision "
-                            f"{'on' if self.collide else 'OFF'}   m mouse   p spawn   "
-                            "enter print   esc print+quit")
+        self.facts.text = "\n".join(
+            [
+                f"rooms        {len(world.rooms)} over {int(k['levels'])} level(s)",
+                f"room span    {median:.0f} x {median_z:.0f} x "
+                f"{interior_h:.1f} u (median)",
+                f"spawn room   {world.spawn_room.name}",
+                f"             {x1 - x0:.1f} x {z1 - z0:.1f} x {y1 - y0:.1f} u",
+                f"task path    {len(world.path)} rooms, {len(world.doors)} doors",
+                f"primitives   {len(world.handler)}  ({world.walls} shell boxes)",
+                f"door clear   {k['door_width']:.2f}u / {diameter:.2f}u player "
+                f"= {clearance:.1f}x",
+                f"lock/peg     scale {tuple(round(a, 2) for a in world.peg_scale)}",
+                f"             exps  {tuple(round(a, 2) for a in world.peg_exp)}",
+                f"visible      {getattr(self, 'visible', 0)} prims in "
+                f"{self.sensor_ms:.1f} ms",
+                f"rebuild      {self.rebuild_ms:.0f} ms",
+                f"touching     {self.touching}",
+                f"probe (e)    {self.probe_text}",
+                "",
+                *warn,
+            ]
+        )
+        self.footer.text = (
+            "up/down select   left/right adjust   e probe   c collision "
+            f"{'on' if self.collide else 'OFF'}   m mouse   p spawn   "
+            "enter print   esc print+quit"
+        )
 
 
 def _shot_poses(world, k):

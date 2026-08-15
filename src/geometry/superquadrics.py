@@ -24,14 +24,22 @@ from dataclasses import dataclass, field
 from .geometry import Matrix3, Vec3, apply, apply_inverse, basis, rotation_matrix
 
 #: `kind` decides what touching a primitive means. Only the harness ever creates
-#: a door, object, lock or portal; the generation agents can only make obstacles.
-OBSTACLE = "obstacle"   # solid, blocks
-DOOR = "door"           # solid, unlock attempt on touch
-OBJECT = "object"       # not solid, pickable object primitive
-LOCK = "lock"           # not solid, display only — the target parameters
-PORTAL = "portal"       # not solid, display only — what an unlocked door becomes
+#: a door, lock or portal; the generation agents can only make obstacles.
+OBSTACLE = "obstacle"  # solid, blocks
+DOOR = "door"  # solid, unlock attempt on touch
+LOCK = "lock"  # not solid, display only — the target parameters
+PORTAL = "portal"  # not solid, display only — what an unlocked door becomes
 
-STRUCTURAL_KEYWORDS = ("wall", "floor", "ceiling", "door", "frame", "portal", "lock", "shell")
+STRUCTURAL_KEYWORDS = (
+    "wall",
+    "floor",
+    "ceiling",
+    "door",
+    "frame",
+    "portal",
+    "lock",
+    "shell",
+)
 
 
 def _is_structural(prim: Superquadric) -> bool:
@@ -39,6 +47,7 @@ def _is_structural(prim: Superquadric) -> bool:
         return True
     low = prim.assembly.lower().strip()
     return not low or any(k in low for k in STRUCTURAL_KEYWORDS)
+
 
 Triple = tuple[float, float, float]
 
@@ -83,7 +92,11 @@ class Superquadric:
     # ----------------------------------------------------------------- geometry
 
     def to_local(self, point: Triple) -> Triple:
-        p = (point[0] - self.position.x, point[1] - self.position.y, point[2] - self.position.z)
+        p = (
+            point[0] - self.position.x,
+            point[1] - self.position.y,
+            point[2] - self.position.z,
+        )
         return apply_inverse(self.matrix, p)
 
     def to_world(self, local: Triple) -> Triple:
@@ -109,22 +122,13 @@ class Superquadric:
         ax, ay, az = self.scale
         e1, e2 = self.exponents
         cos_eta = _signed_pow(math.cos(eta), e1)
-        return self.to_world((
-            ax * cos_eta * _signed_pow(math.cos(omega), e2),
-            ay * cos_eta * _signed_pow(math.sin(omega), e2),
-            az * _signed_pow(math.sin(eta), e1),
-        ))
-
-    def axis_extrema(self) -> list[Triple]:
-        """The six local-axis surface points, in world space.
-
-        Exact for every exponent pair: each sits where one signed power is 1 and
-        the others are 0.
-        """
-        ax, ay, az = self.scale
-        return [self.to_world(local) for local in
-                ((ax, 0.0, 0.0), (-ax, 0.0, 0.0), (0.0, ay, 0.0),
-                 (0.0, -ay, 0.0), (0.0, 0.0, az), (0.0, 0.0, -az))]
+        return self.to_world(
+            (
+                ax * cos_eta * _signed_pow(math.cos(omega), e2),
+                ay * cos_eta * _signed_pow(math.sin(omega), e2),
+                az * _signed_pow(math.sin(eta), e1),
+            )
+        )
 
     def aabb(self, margin: float = 0.0) -> tuple[Triple, Triple]:
         """World-space bounds of the rotated local box, optionally expanded.
@@ -142,8 +146,10 @@ class Superquadric:
                     for axis in range(3):
                         lo[axis] = min(lo[axis], corner[axis])
                         hi[axis] = max(hi[axis], corner[axis])
-        return ((lo[0] - margin, lo[1] - margin, lo[2] - margin),
-                (hi[0] + margin, hi[1] + margin, hi[2] + margin))
+        return (
+            (lo[0] - margin, lo[1] - margin, lo[2] - margin),
+            (hi[0] + margin, hi[1] + margin, hi[2] + margin),
+        )
 
     # ---------------------------------------------------------- (de)serialisation
 
@@ -232,18 +238,27 @@ def build_mesh(prim: Superquadric, resolution: int) -> MeshData:
     # winding-agnostic, so it reads either order identically.
     triangles = [(a, c, b) for a, b, c in triangles]
     color = (*prim.color, 1.0)
-    return MeshData(vertices=vertices, triangles=triangles, normals=normals,
-                    colors=[color] * len(vertices))
+    return MeshData(
+        vertices=vertices,
+        triangles=triangles,
+        normals=normals,
+        colors=[color] * len(vertices),
+    )
 
 
-def _smooth_normals(vertices: list[Triple], triangles: list[tuple[int, int, int]],
-                    centre: Triple) -> list[Triple]:
+def _smooth_normals(
+    vertices: list[Triple], triangles: list[tuple[int, int, int]], centre: Triple
+) -> list[Triple]:
     sums = [[0.0, 0.0, 0.0] for _ in vertices]
     for i, j, k in triangles:
         a, b, c = vertices[i], vertices[j], vertices[k]
         u = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
         v = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
-        n = (u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0])
+        n = (
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        )
         for index in (i, j, k):
             sums[index][0] += n[0]
             sums[index][1] += n[1]
@@ -259,7 +274,9 @@ def _smooth_normals(vertices: list[Triple], triangles: list[tuple[int, int, int]
         vx, vy, vz = vertices[index]
         radial = (vx - centre[0], vy - centre[1], vz - centre[2])
         length = math.sqrt(sum(c * c for c in radial))
-        normals.append(tuple(c / length for c in radial) if length > 1e-12 else (0.0, 1.0, 0.0))
+        normals.append(
+            tuple(c / length for c in radial) if length > 1e-12 else (0.0, 1.0, 0.0)
+        )
     return normals
 
 
@@ -302,81 +319,25 @@ def _closest_point_on_triangle(p: Triple, a: Triple, b: Triple, c: Triple) -> Tr
     if va <= 0.0 and (d4 - d3) >= 0.0 and (d5 - d6) >= 0.0:
         denominator = (d4 - d3) + (d5 - d6)
         t = (d4 - d3) / denominator if denominator != 0.0 else 0.0
-        return (b[0] + (c[0] - b[0]) * t, b[1] + (c[1] - b[1]) * t, b[2] + (c[2] - b[2]) * t)
+        return (
+            b[0] + (c[0] - b[0]) * t,
+            b[1] + (c[1] - b[1]) * t,
+            b[2] + (c[2] - b[2]) * t,
+        )
 
     denominator = va + vb + vc
     if denominator <= 0.0:  # degenerate triangle; a is as good as anything
         return a
     v, w = vb / denominator, vc / denominator
-    return (a[0] + ab[0] * v + ac[0] * w,
-            a[1] + ab[1] * v + ac[1] * w,
-            a[2] + ab[2] * v + ac[2] * w)
-
-
-def _segment_hits_triangle(origin: Triple, delta: Triple, a: Triple, b: Triple, c: Triple) -> bool:
-    """Möller-Trumbore, restricted to the segment `origin -> origin + delta`."""
-    e1 = (b[0] - a[0], b[1] - a[1], b[2] - a[2])
-    e2 = (c[0] - a[0], c[1] - a[1], c[2] - a[2])
-    h = (delta[1] * e2[2] - delta[2] * e2[1],
-         delta[2] * e2[0] - delta[0] * e2[2],
-         delta[0] * e2[1] - delta[1] * e2[0])
-    det = e1[0] * h[0] + e1[1] * h[1] + e1[2] * h[2]
-    if -1e-12 < det < 1e-12:
-        return False
-    inv = 1.0 / det
-    s = (origin[0] - a[0], origin[1] - a[1], origin[2] - a[2])
-    u = inv * (s[0] * h[0] + s[1] * h[1] + s[2] * h[2])
-    if u < 0.0 or u > 1.0:
-        return False
-    q = (s[1] * e1[2] - s[2] * e1[1], s[2] * e1[0] - s[0] * e1[2], s[0] * e1[1] - s[1] * e1[0])
-    v = inv * (delta[0] * q[0] + delta[1] * q[1] + delta[2] * q[2])
-    if v < 0.0 or u + v > 1.0:
-        return False
-    t = inv * (e2[0] * q[0] + e2[1] * q[1] + e2[2] * q[2])
-    # Both ends are open: the ray starts at the eye and ends *on* the candidate's
-    # own surface, and neither endpoint should count as an occlusion.
-    return 1e-6 < t < 1.0 - 1e-6
-
-
-def _ray_hits_aabb(origin: Triple, delta: Triple, lo: Triple, hi: Triple) -> bool:
-    """Slab test for the segment `origin -> origin + delta` against a box.
-
-    The occluder broad phase. A bounding *sphere* is a fine bound for a blob and
-    a useless one for a slab — a 0.4 x 4 x 23 wall gets a 23-unit rejection
-    sphere that covers the whole building, so no ray anywhere is ever rejected by
-    it. A wall's AABB is thin even when its bounding sphere is enormous, which is
-    exactly the case the sphere could not reject.
-    """
-    t0, t1 = 0.0, 1.0
-    for axis in range(3):
-        d = delta[axis]
-        if abs(d) < 1e-12:  # parallel to this slab: inside it, or missing entirely
-            if origin[axis] < lo[axis] or origin[axis] > hi[axis]:
-                return False
-            continue
-        near, far = (lo[axis] - origin[axis]) / d, (hi[axis] - origin[axis]) / d
-        if near > far:
-            near, far = far, near
-        t0, t1 = max(t0, near), min(t1, far)
-        if t0 > t1:
-            return False
-    return True
-
-
-def _nearest_surface_point(mesh: MeshData, p: Triple) -> Triple:
-    """Closest point of a tessellated surface to `p`."""
-    vertices = mesh.vertices
-    best, best_distance = vertices[0], math.inf
-    for i, j, k in mesh.triangles:
-        q = _closest_point_on_triangle(p, vertices[i], vertices[j], vertices[k])
-        distance = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 + (q[2] - p[2]) ** 2
-        if distance < best_distance:
-            best, best_distance = q, distance
-    return best
+    return (
+        a[0] + ab[0] * v + ac[0] * w,
+        a[1] + ab[1] * v + ac[1] * w,
+        a[2] + ab[2] * v + ac[2] * w,
+    )
 
 
 def _aabb_overlaps_point(lo: Triple, hi: Triple, p: Triple) -> bool:
-    return (lo[0] <= p[0] <= hi[0] and lo[1] <= p[1] <= hi[1] and lo[2] <= p[2] <= hi[2])
+    return lo[0] <= p[0] <= hi[0] and lo[1] <= p[1] <= hi[1] and lo[2] <= p[2] <= hi[2]
 
 
 # -------------------------------------------------------------------- handler
@@ -444,10 +405,6 @@ class SuperquadricHandler:
     def next_id(self) -> int:
         return max(self._primitives, default=-1) + 1
 
-    @property
-    def obstacles(self) -> list[Superquadric]:
-        return [p for p in self._primitives.values() if p.is_solid]
-
     # ---------------------------------------------------------------- meshing
 
     def mesh_data(self, prim_id: int, resolution: int) -> MeshData:
@@ -482,11 +439,16 @@ class SuperquadricHandler:
         p = position.as_tuple()
         centre = prim.position
         reach = prim.bounding_radius + radius
-        if (p[0] - centre.x) ** 2 + (p[1] - centre.y) ** 2 + (p[2] - centre.z) ** 2 > reach * reach:
+        if (p[0] - centre.x) ** 2 + (p[1] - centre.y) ** 2 + (
+            p[2] - centre.z
+        ) ** 2 > reach * reach:
             return False
         mesh, lo, hi = self._collision_mesh(prim)
-        if not _aabb_overlaps_point((lo[0] - radius, lo[1] - radius, lo[2] - radius),
-                                    (hi[0] + radius, hi[1] + radius, hi[2] + radius), p):
+        if not _aabb_overlaps_point(
+            (lo[0] - radius, lo[1] - radius, lo[2] - radius),
+            (hi[0] + radius, hi[1] + radius, hi[2] + radius),
+            p,
+        ):
             return False
         if prim.contains(p):
             return True
@@ -494,7 +456,9 @@ class SuperquadricHandler:
         vertices = mesh.vertices
         for i, j, k in mesh.triangles:
             q = _closest_point_on_triangle(p, vertices[i], vertices[j], vertices[k])
-            if (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 + (q[2] - p[2]) ** 2 <= radius_squared:
+            if (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 + (
+                q[2] - p[2]
+            ) ** 2 <= radius_squared:
                 return True
         return False
 
@@ -512,13 +476,18 @@ class SuperquadricHandler:
         and has to see all of it: one increment can brush a collectable and keep
         flying, and a non-solid primitive never stops anything at all.
         """
-        return [prim for prim in self._primitives.values()
-                if self.touches(prim, position, radius)]
+        return [
+            prim
+            for prim in self._primitives.values()
+            if self.touches(prim, position, radius)
+        ]
 
     def is_blocked(self, position: Vec3, radius: float) -> bool:
         return self.blocking_primitive(position, radius) is not None
 
-    def segment_is_clear(self, start: Vec3, end: Vec3, radius: float, increment: float) -> bool:
+    def segment_is_clear(
+        self, start: Vec3, end: Vec3, radius: float, increment: float
+    ) -> bool:
         """Can the player sphere fly `start -> end` without touching anything?
 
         The same predicate movement uses, sampled at the same increment — which
@@ -555,46 +524,21 @@ class SuperquadricHandler:
                 result.append(p)
         return result
 
-    def visible_from(self, position: Vec3, forward: Vec3, sensor: Sensor) -> list[Superquadric]:
-        """Primitives the parameter sensor detects from this pose.
-
-        Range, then camera frustum, then sampled line of sight against the
-        collision meshes. Once any part of an assembly is detected the caller
-        gets the *whole* assembly — that information advantage over a
-        pixel policy is the point of the abstraction, not an accident of it.
-
-        This is the genuine-occlusion check and it is expensive (a raycast per
-        candidate against every solid primitive's collision mesh), which is
-        fine for the one-off use it was built for — world generation proving a
-        peg is hidden from the spawn pose (`world/task.py`) — but too slow to
-        call every frame from the live sensor. That path uses
-        `visible_cone_from` instead.
-        """
-        eye = position.as_tuple()
-        candidates = self._cone_candidates(position, forward, sensor)
-        seen = [prim for _, prim in candidates if self._has_line_of_sight(eye, prim)]
-        return self._expand_assemblies(seen)
-
-    def visible_cone_from(self, position: Vec3, forward: Vec3, sensor: Sensor) -> list[Superquadric]:
-        """Primitives in sensor range and field of view, ignoring occlusion.
+    def visible_cone_from(
+        self, position: Vec3, forward: Vec3, sensor: Sensor
+    ) -> list[Superquadric]:
+        """Primitives in sensor range and field of view.
 
         When at least one object which makes an assembly is seen, the whole
         assembly is visible.
-
-        No raycasting, so it is cheap enough for a live sensor called every
-        frame — but on its own it sees straight through walls. It is safe for
-        the live game loop only because `Scene.visible` additionally restricts
-        the result to the player's current room, which is what actually keeps
-        the agent from seeing into the next room; it is not a substitute for
-        `visible_from`'s genuine occlusion test at world-generation time.
         """
         seen = [prim for _, prim in self._cone_candidates(position, forward, sensor)]
         return self._expand_assemblies(seen)
 
-    def _cone_candidates(self, position: Vec3, forward: Vec3,
-                         sensor: Sensor) -> list[tuple[float, Superquadric]]:
-        """Primitives in range and field of view, nearest first. The shared
-        broad phase behind both `visible_from` and `visible_cone_from`."""
+    def _cone_candidates(
+        self, position: Vec3, forward: Vec3, sensor: Sensor
+    ) -> list[tuple[float, Superquadric]]:
+        """Primitives in range and field of view, nearest first."""
         planes = self._frustum_planes(forward, sensor)
         candidates: list[tuple[float, Superquadric]] = []
         for prim in self._primitives.values():
@@ -623,47 +567,16 @@ class SuperquadricHandler:
             f * math.sin(half_v) - up * math.cos(half_v),
         ]
 
-    def _has_line_of_sight(self, eye: Triple, prim: Superquadric) -> bool:
-        mesh, _, _ = self._collision_mesh(prim)
-        # Nearest surface point first: it is the sample most likely to be clear,
-        # so the usual case costs one ray instead of eight. The nearest *vertex*
-        # alone was not enough — against a large slab the player is right up
-        # against, it is a tessellation corner metres away that may itself be
-        # occluded, every sample then fails, and the sensor reports no wall at
-        # all while the agent flies into it.
-        #
-        # It is kept as well as, not instead of, the surface point: seen through
-        # a doorway, a vertex further along a wall can be visible when the
-        # nearest point on it is squarely behind the frame. Dropping it lost
-        # primitives the old code detected.
-        nearest_vertex = min(mesh.vertices, key=lambda v: (v[0] - eye[0]) ** 2
-                             + (v[1] - eye[1]) ** 2 + (v[2] - eye[2]) ** 2)
-        for sample in [_nearest_surface_point(mesh, eye), nearest_vertex,
-                       *prim.axis_extrema()]:
-            if self._sample_is_reachable(eye, sample, prim.id):
-                return True
-        return False
-
-    def _sample_is_reachable(self, eye: Triple, sample: Triple, exclude: int) -> bool:
-        delta = (sample[0] - eye[0], sample[1] - eye[1], sample[2] - eye[2])
-        for other in self._primitives.values():
-            if other.id == exclude or not other.is_solid:
-                continue
-            mesh, lo, hi = self._collision_mesh(other)
-            if not _ray_hits_aabb(eye, delta, lo, hi):
-                continue
-            vertices = mesh.vertices
-            for i, j, k in mesh.triangles:
-                if _segment_hits_triangle(eye, delta, vertices[i], vertices[j], vertices[k]):
-                    return False
-        return True
-
     # ---------------------------------------------------------- (de)serialisation
 
     def to_list(self) -> list[dict]:
         return [prim.to_dict() for prim in self._primitives.values()]
 
     @classmethod
-    def from_list(cls, data: list[dict], *, collision_resolution: int = 8) -> "SuperquadricHandler":
-        return cls((Superquadric.from_dict(item) for item in data),
-                   collision_resolution=collision_resolution)
+    def from_list(
+        cls, data: list[dict], *, collision_resolution: int = 8
+    ) -> "SuperquadricHandler":
+        return cls(
+            (Superquadric.from_dict(item) for item in data),
+            collision_resolution=collision_resolution,
+        )
