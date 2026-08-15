@@ -1,0 +1,557 @@
+{
+  "maze": "worlds_2d/pillar-field.json",
+  "solved": true,
+  "reason": "reached the key",
+  "steps": 163,
+  "calls": 23,
+  "collisions": 10,
+  "explored": 0.29,
+  "wall_time_s": 269.69989904800605,
+  "start": [
+    1,
+    2
+  ],
+  "key": [
+    12,
+    4
+  ],
+  "trajectory": [
+    {
+      "call": 1,
+      "step": 18,
+      "position": [
+        18,
+        1
+      ],
+      "planned": [
+        "left",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "executed": 18,
+      "blocked": true,
+      "reasoning": "The known open route is left to (1,1), then down to (2,1). I will continue downward to reveal and traverse the largest unexplored region."
+    },
+    {
+      "call": 2,
+      "step": 20,
+      "position": [
+        16,
+        1
+      ],
+      "planned": [
+        "up",
+        "up"
+      ],
+      "executed": 2,
+      "blocked": false,
+      "reasoning": "heading for the nearest unseen cell"
+    },
+    {
+      "call": 3,
+      "step": 39,
+      "position": [
+        18,
+        18
+      ],
+      "planned": [
+        "down",
+        "down",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 19,
+      "blocked": true,
+      "reasoning": "The current cell is a vertical dead-end with the known route leading down to (18,1), then right through (18,2). I will follow that route and push east into the unexplored\n  maze."
+    },
+    {
+      "call": 4,
+      "step": 56,
+      "position": [
+        18,
+        1
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left"
+      ],
+      "executed": 17,
+      "blocked": true,
+      "reasoning": "The right and down sides are blocked, while the known floor opens left and upward. I will trace left along the open row and continue west into the unexplored\n  region."
+    },
+    {
+      "call": 5,
+      "step": 73,
+      "position": [
+        1,
+        1
+      ],
+      "planned": [
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up"
+      ],
+      "executed": 17,
+      "blocked": true,
+      "reasoning": "The westward corridor ends at (18,1), but the known path rises through (17,1), (16,1), and (15,1). I will climb that route and continue north into unseen cells."
+    },
+    {
+      "call": 6,
+      "step": 75,
+      "position": [
+        3,
+        1
+      ],
+      "planned": [
+        "down",
+        "down"
+      ],
+      "executed": 2,
+      "blocked": false,
+      "reasoning": "heading for the nearest unseen cell"
+    },
+    {
+      "call": 7,
+      "step": 90,
+      "position": [
+        18,
+        1
+      ],
+      "planned": [
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "executed": 15,
+      "blocked": true,
+      "reasoning": "The current position is in a vertical passage: up is known, left and right are walls, and down remains open through (4,1). I will continue south to expose the unexplored area\n  below."
+    },
+    {
+      "call": 8,
+      "step": 108,
+      "position": [
+        17,
+        18
+      ],
+      "planned": [
+        "right",
+        "up",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 18,
+      "blocked": true,
+      "reasoning": "The lower corridor has already been exhausted eastward, so the useful unexplored branch is north from (18,2) into row 17. I will take the known right step, move up, then sweep\n  east along that row."
+    },
+    {
+      "call": 9,
+      "step": 108,
+      "position": [
+        17,
+        18
+      ],
+      "planned": [
+        "right",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up"
+      ],
+      "executed": 0,
+      "blocked": true,
+      "reasoning": "The prior attempt failed immediately because down from (18,1) is a known wall. I will take the safe east route, return to the upper corridor, then probe north into the unseen\n  maze and continue upward."
+    },
+    {
+      "call": 10,
+      "step": 111,
+      "position": [
+        17,
+        15
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left"
+      ],
+      "executed": 3,
+      "blocked": false,
+      "reasoning": "The known corridor extends left from my position, while all other directions are blocked by walls. I will follow it and probe one unseen cell at the end to reveal more of the\nmaze."
+    },
+    {
+      "call": 11,
+      "step": 112,
+      "position": [
+        16,
+        15
+      ],
+      "planned": [
+        "up",
+        "up",
+        "up"
+      ],
+      "executed": 1,
+      "blocked": true,
+      "reasoning": "The local area is open above me, and moving upward is the clearest route into the large unexplored region. I will take one known step, then probe farther upward to reveal new\n  terrain."
+    },
+    {
+      "call": 12,
+      "step": 116,
+      "position": [
+        18,
+        13
+      ],
+      "planned": [
+        "down",
+        "down",
+        "left",
+        "left"
+      ],
+      "executed": 4,
+      "blocked": false,
+      "reasoning": "Up is confirmed blocked, while the corridor continues safely downward and left through the observed open area. I will follow that corridor and then probe west into unseen\n  terrain."
+    },
+    {
+      "call": 13,
+      "step": 119,
+      "position": [
+        17,
+        11
+      ],
+      "planned": [
+        "up",
+        "left",
+        "left"
+      ],
+      "executed": 3,
+      "blocked": false,
+      "reasoning": "The southern route is blocked, and the observed passage leads upward before opening toward the unexplored west. I will move up once, then probe left to expand the\n  map."
+    },
+    {
+      "call": 14,
+      "step": 121,
+      "position": [
+        16,
+        10
+      ],
+      "planned": [
+        "left",
+        "up",
+        "up"
+      ],
+      "executed": 2,
+      "blocked": true,
+      "reasoning": "Directly upward is blocked, but the known floor to my left provides a route around the wall and then toward the unexplored north. I will take that detour and probe one new\n  cell."
+    },
+    {
+      "call": 15,
+      "step": 125,
+      "position": [
+        17,
+        7
+      ],
+      "planned": [
+        "left",
+        "down",
+        "left",
+        "left"
+      ],
+      "executed": 4,
+      "blocked": false,
+      "reasoning": "North is blocked, and the open route descends through the known passage before continuing west into unseen cells. I will follow that route and probe farther left."
+    },
+    {
+      "call": 16,
+      "step": 129,
+      "position": [
+        17,
+        3
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left",
+        "left"
+      ],
+      "executed": 4,
+      "blocked": false,
+      "reasoning": "The known corridor runs west from my position, while the northern route ends at a wall shortly ahead. I will continue west and probe deeper into the unexplored\n  region."
+    },
+    {
+      "call": 17,
+      "step": 130,
+      "position": [
+        18,
+        3
+      ],
+      "planned": [
+        "down",
+        "down"
+      ],
+      "executed": 1,
+      "blocked": true,
+      "reasoning": "The corridor is enclosed above and west, so the only promising unexplored branch is downward from the known floor. I will descend and probe the next row."
+    },
+    {
+      "call": 18,
+      "step": 133,
+      "position": [
+        18,
+        6
+      ],
+      "planned": [
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 3,
+      "blocked": false,
+      "reasoning": "The southern edge is blocked, and the open passage continues east from my position. I will follow it and probe the first unseen cell on that route."
+    },
+    {
+      "call": 19,
+      "step": 136,
+      "position": [
+        18,
+        9
+      ],
+      "planned": [
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 3,
+      "blocked": false,
+      "reasoning": "The observed corridor remains open eastward, with the next cell beyond it unseen. I will continue east to reveal more of the maze."
+    },
+    {
+      "call": 20,
+      "step": 144,
+      "position": [
+        18,
+        17
+      ],
+      "planned": [
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 8,
+      "blocked": false,
+      "reasoning": "The current row is a long confirmed open corridor extending east, while the nearby northern branch is likely blocked. I will cover the corridor toward the far side of the maze\n  to expose new junctions."
+    },
+    {
+      "call": 21,
+      "step": 158,
+      "position": [
+        16,
+        5
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up"
+      ],
+      "executed": 14,
+      "blocked": false,
+      "reasoning": "The eastern end has no upward exit, so I will backtrack along the confirmed corridor toward the western section where the row above is largely unexplored. From there I will\n  probe north."
+    },
+    {
+      "call": 22,
+      "step": 162,
+      "position": [
+        12,
+        5
+      ],
+      "planned": [
+        "up",
+        "up",
+        "up",
+        "up"
+      ],
+      "executed": 4,
+      "blocked": false,
+      "reasoning": "The cell directly above is confirmed open and leads into the unexplored northern region. I will advance upward and probe deeper to reveal the maze structure."
+    },
+    {
+      "call": 23,
+      "step": 163,
+      "position": [
+        12,
+        4
+      ],
+      "planned": [
+        "left"
+      ],
+      "executed": 1,
+      "blocked": false,
+      "reasoning": "The key is immediately west of my position, and the intervening cell is open. I will move left onto it."
+    }
+  ],
+  "policy": "claude",
+  "agent_stats": {
+    "calls": 24,
+    "retries": 2,
+    "duration_s": 237.1788838389475
+  },
+  "agent_failures": "2"
+}

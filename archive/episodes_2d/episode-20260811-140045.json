@@ -1,0 +1,151 @@
+{
+  "maze": "worlds_2d/procedural-20260811-140045.json",
+  "solved": true,
+  "reason": "reached the key",
+  "steps": 10,
+  "calls": 4,
+  "collisions": 3,
+  "explored": 0.24,
+  "wall_time_s": 145.68470494699432,
+  "start": [
+    7,
+    7
+  ],
+  "key": [
+    5,
+    3
+  ],
+  "trajectory": [
+    {
+      "call": 1,
+      "step": 6,
+      "position": [
+        7,
+        1
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 6,
+      "blocked": true,
+      "reasoning": "The left side has 67 unseen cells and the top has 67 unseen cells\u2014far more unexplored territory than right (17) or down (17). I'll systematically sweep the top-left         \n  quadrant: move left along row 7 to reach the left edge, then move up to explore the top rows, then move right along row 0. This covers the most promising unexplored region."
+    },
+    {
+      "call": 2,
+      "step": 8,
+      "position": [
+        5,
+        1
+      ],
+      "planned": [
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down"
+      ],
+      "executed": 2,
+      "blocked": true,
+      "reasoning": "The unexplored regions are primarily upward (64 unseen cells) and rightward (68 unseen cells). I'll move straight up from (7,1) to reach row 0, then sweep right along the   \n  top row, then explore downward along the right edge. This systematically covers the top-right quadrant where the key is most likely to be."
+    },
+    {
+      "call": 3,
+      "step": 8,
+      "position": [
+        5,
+        1
+      ],
+      "planned": [
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 0,
+      "blocked": true,
+      "reasoning": "The left side has 67 unseen cells and the top has 67 unseen cells\u2014far more unexplored territory than right (17) or down (17). I'll systematically sweep the top-left         \n  quadrant: move left along row 7 to reach the left edge, then move up to explore the top rows, then move right along row 0. This covers the most promising unexplored region."
+    },
+    {
+      "call": 4,
+      "step": 10,
+      "position": [
+        5,
+        3
+      ],
+      "planned": [
+        "right",
+        "right"
+      ],
+      "executed": 2,
+      "blocked": false,
+      "reasoning": "heading for the nearest unseen cell"
+    }
+  ],
+  "policy": "claude",
+  "agent_stats": {
+    "calls": 4,
+    "retries": 0,
+    "duration_s": 142.55862166799488
+  },
+  "agent_failures": "1"
+}

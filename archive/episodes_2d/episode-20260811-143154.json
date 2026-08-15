@@ -1,0 +1,138 @@
+{
+  "maze": "worlds_2d/pillarfield-plaza.json",
+  "solved": false,
+  "reason": "agent-call budget exhausted",
+  "steps": 37,
+  "calls": 3,
+  "collisions": 2,
+  "explored": 0.0675,
+  "wall_time_s": 203.51619233499514,
+  "start": [
+    6,
+    8
+  ],
+  "key": [
+    15,
+    2
+  ],
+  "trajectory": [
+    {
+      "call": 1,
+      "step": 12,
+      "position": [
+        18,
+        8
+      ],
+      "planned": [
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "right",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up"
+      ],
+      "executed": 12,
+      "blocked": true,
+      "reasoning": "The key is in unexplored territory. The down direction has the most unseen cells (257), so I'll systematically descend column 8 to the southern edge, then      \n  return via column 9 to efficiently map the bottom of the maze."
+    },
+    {
+      "call": 2,
+      "step": 36,
+      "position": [
+        1,
+        15
+      ],
+      "planned": [
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "up",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right",
+        "right"
+      ],
+      "executed": 24,
+      "blocked": false,
+      "reasoning": "The key is in the massive unexplored northern region (348 unseen cells). I'll ascend to the top of the maze via column 8, then explore eastward along row 1 to  \n  systematically map the northern and eastern areas."
+    },
+    {
+      "call": 3,
+      "step": 37,
+      "position": [
+        2,
+        15
+      ],
+      "planned": [
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "down",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left",
+        "left"
+      ],
+      "executed": 1,
+      "blocked": true,
+      "reasoning": "The south has the most unexplored territory (339 unseen cells). I'll descend column 15 to the southern edge, then explore westward along row 19 to              \n  systematically map the bottom and western regions."
+    }
+  ],
+  "policy": "claude",
+  "agent_stats": {
+    "calls": 3,
+    "retries": 0,
+    "duration_s": 199.4322506239987
+  },
+  "agent_failures": "0"
+}

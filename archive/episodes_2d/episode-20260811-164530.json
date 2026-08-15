@@ -1,0 +1,48 @@
+{
+  "maze": "worlds_2d/the-pillared-hall.json",
+  "solved": true,
+  "reason": "reached the key",
+  "steps": 6,
+  "calls": 1,
+  "collisions": 0,
+  "explored": 0.69,
+  "wall_time_s": 10.644951752998168,
+  "start": [
+    4,
+    4
+  ],
+  "key": [
+    7,
+    1
+  ],
+  "trajectory": [
+    {
+      "call": 1,
+      "step": 6,
+      "position": [
+        7,
+        1
+      ],
+      "planned": [
+        "down",
+        "down",
+        "down",
+        "left",
+        "left",
+        "left"
+      ],
+      "executed": 6,
+      "blocked": false,
+      "reasoning": ""
+    }
+  ],
+  "policy": "codex",
+  "agent_model": "gpt-5.6-terra",
+  "agent_effort": "high",
+  "agent_stats": {
+    "calls": 1,
+    "retries": 0,
+    "duration_s": 6.311424875006196
+  },
+  "agent_failures": "0"
+}

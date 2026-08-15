@@ -1,0 +1,84 @@
+{
+  "maze": "worlds_2d/pillarfield-plaza.json",
+  "solved": false,
+  "reason": "agent-call budget exhausted",
+  "steps": 18,
+  "calls": 3,
+  "collisions": 0,
+  "explored": 0.0525,
+  "wall_time_s": 40.14034032699419,
+  "start": [
+    6,
+    8
+  ],
+  "key": [
+    15,
+    2
+  ],
+  "trajectory": [
+    {
+      "call": 1,
+      "step": 7,
+      "position": [
+        7,
+        10
+      ],
+      "planned": [
+        "right",
+        "up",
+        "left",
+        "down",
+        "down",
+        "right",
+        "right"
+      ],
+      "executed": 7,
+      "blocked": false,
+      "reasoning": "The key is unseen, so I will sweep the known open pocket and finish by probing eastward from its lower edge to reveal new territory without risking the start of\n  the trajectory."
+    },
+    {
+      "call": 2,
+      "step": 15,
+      "position": [
+        8,
+        11
+      ],
+      "planned": [
+        "up",
+        "up",
+        "left",
+        "down",
+        "down",
+        "down",
+        "right",
+        "right"
+      ],
+      "executed": 8,
+      "blocked": false,
+      "reasoning": "I will traverse the confirmed open area to its lower-right edge, then probe eastward to reveal new maze cells while keeping the only risky move at the\n  end."
+    },
+    {
+      "call": 3,
+      "step": 18,
+      "position": [
+        9,
+        13
+      ],
+      "planned": [
+        "down",
+        "right",
+        "right"
+      ],
+      "executed": 3,
+      "blocked": false,
+      "reasoning": "The confirmed corridor continues through (9,11) and (9,12). I will follow it and probe east from (9,12) to uncover new territory, with the risky step\n  last."
+    }
+  ],
+  "policy": "claude",
+  "agent_stats": {
+    "calls": 3,
+    "retries": 0,
+    "duration_s": 30.97666892000416
+  },
+  "agent_failures": "0"
+}
