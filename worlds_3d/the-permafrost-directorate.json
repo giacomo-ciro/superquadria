@@ -1,0 +1,3726 @@
+{
+  "bounds": 60.0,
+  "player": {
+    "position": [
+      -16.0,
+      -27.5,
+      -18.0
+    ],
+    "forward": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "radius": 0.6,
+    "carrying": null
+  },
+  "primitives": [
+    {
+      "id": 0,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -26.0,
+        -29.9,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        0.1,
+        8.0
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 1,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -26.0,
+        -27.8,
+        -22.75
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        2.0,
+        3.25
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 2,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -26.0,
+        -27.8,
+        -13.25
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        2.0,
+        3.25
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 3,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -26.0,
+        -25.4,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        0.4,
+        8.0
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 4,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -6.0,
+        -27.5,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        2.5,
+        8.0
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 5,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -16.0,
+        -27.5,
+        -26.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        10.0,
+        2.5,
+        0.2
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 6,
+      "kind": "obstacle",
+      "assembly": "wall",
+      "position": [
+        -16.0,
+        -27.5,
+        -10.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        10.0,
+        2.5,
+        0.2
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.3,
+        0.28
+      ]
+    },
+    {
+      "id": 7,
+      "kind": "obstacle",
+      "assembly": "floor",
+      "position": [
+        -16.0,
+        -30.0,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        10.0,
+        0.2,
+        8.0
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.16,
+        0.18,
+        0.17
+      ]
+    },
+    {
+      "id": 8,
+      "kind": "obstacle",
+      "assembly": "ceiling",
+      "position": [
+        -16.0,
+        -25.0,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        10.0,
+        0.2,
+        8.0
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.42,
+        0.44,
+        0.39
+      ]
+    },
+    {
+      "id": 9,
+      "kind": "door",
+      "assembly": "door",
+      "position": [
+        -26.0,
+        -27.8,
+        -18.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        2.0,
+        1.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.71,
+        0.71,
+        0.71
+      ]
+    },
+    {
+      "id": 10,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -10.2,
+        -28.22,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.35,
+        0.08,
+        0.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.24,
+        0.2,
+        0.14
+      ]
+    },
+    {
+      "id": 11,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -11.35,
+        -29.05,
+        -24.35
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.07,
+        0.07,
+        0.75
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.14,
+        0.13
+      ]
+    },
+    {
+      "id": 12,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -9.05,
+        -29.05,
+        -24.35
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.07,
+        0.07,
+        0.75
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.14,
+        0.13
+      ]
+    },
+    {
+      "id": 13,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -11.35,
+        -29.05,
+        -23.65
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.07,
+        0.07,
+        0.75
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.14,
+        0.13
+      ]
+    },
+    {
+      "id": 14,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -9.05,
+        -29.05,
+        -23.65
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.07,
+        0.07,
+        0.75
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.14,
+        0.13
+      ]
+    },
+    {
+      "id": 15,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -10.2,
+        -28.42,
+        -24.38
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.05,
+        0.05,
+        1.05
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.16,
+        0.17,
+        0.16
+      ]
+    },
+    {
+      "id": 16,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -10.2,
+        -28.42,
+        -23.62
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.05,
+        0.05,
+        1.05
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.16,
+        0.17,
+        0.16
+      ]
+    },
+    {
+      "id": 17,
+      "kind": "obstacle",
+      "assembly": "assembly-28",
+      "position": [
+        -11.35,
+        -28.42,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.05,
+        0.05,
+        0.35
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.16,
+        0.17,
+        0.16
+      ]
+    },
+    {
+      "id": 18,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -29.25,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.4
+      ],
+      "exponents": [
+        0.2,
+        0.6
+      ],
+      "color": [
+        0.38,
+        0.39,
+        0.35
+      ]
+    },
+    {
+      "id": 19,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -28.5,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.75,
+        0.22,
+        0.45
+      ],
+      "exponents": [
+        0.35,
+        0.55
+      ],
+      "color": [
+        0.48,
+        0.48,
+        0.42
+      ]
+    },
+    {
+      "id": 20,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -28.22,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.8,
+        0.05,
+        0.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.3,
+        0.31,
+        0.28
+      ]
+    },
+    {
+      "id": 21,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -28.58,
+        -24.82
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.1,
+        0.03,
+        0.1
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.13,
+        0.12
+      ]
+    },
+    {
+      "id": 22,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -27.9,
+        -25.18
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.035,
+        0.035,
+        0.3
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.42,
+        0.34
+      ]
+    },
+    {
+      "id": 23,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -27.65,
+        -24.98
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.035,
+        0.035,
+        0.22
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.42,
+        0.34
+      ]
+    },
+    {
+      "id": 24,
+      "kind": "obstacle",
+      "assembly": "assembly-17",
+      "position": [
+        -19.0,
+        -27.98,
+        -25.18
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.055,
+        0.055,
+        0.055
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.55,
+        0.5,
+        0.38
+      ]
+    },
+    {
+      "id": 25,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -29.277,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.522,
+        0.522,
+        0.38
+      ],
+      "exponents": [
+        0.2,
+        0.6
+      ],
+      "color": [
+        0.38,
+        0.39,
+        0.35
+      ]
+    },
+    {
+      "id": 26,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -28.565,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.712,
+        0.209,
+        0.427
+      ],
+      "exponents": [
+        0.35,
+        0.55
+      ],
+      "color": [
+        0.48,
+        0.48,
+        0.42
+      ]
+    },
+    {
+      "id": 27,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -28.299,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.76,
+        0.048,
+        0.475
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.3,
+        0.31,
+        0.28
+      ]
+    },
+    {
+      "id": 28,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -28.641,
+        -24.829
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.095,
+        0.028,
+        0.095
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.12,
+        0.13,
+        0.12
+      ]
+    },
+    {
+      "id": 29,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -27.995,
+        -25.171
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.033,
+        0.033,
+        0.285
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.42,
+        0.34
+      ]
+    },
+    {
+      "id": 30,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -27.758,
+        -24.981
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.033,
+        0.033,
+        0.209
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.42,
+        0.34
+      ]
+    },
+    {
+      "id": 31,
+      "kind": "obstacle",
+      "assembly": "assembly-2",
+      "position": [
+        -17.0,
+        -28.071,
+        -25.171
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.052,
+        0.052,
+        0.052
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.55,
+        0.5,
+        0.38
+      ]
+    },
+    {
+      "id": 32,
+      "kind": "obstacle",
+      "assembly": "assembly-6",
+      "position": [
+        -22.6,
+        -29.02,
+        -25.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.6,
+        0.22,
+        0.38
+      ],
+      "exponents": [
+        0.2,
+        0.45
+      ],
+      "color": [
+        0.3,
+        0.31,
+        0.28
+      ]
+    },
+    {
+      "id": 33,
+      "kind": "obstacle",
+      "assembly": "assembly-6",
+      "position": [
+        -23.85,
+        -29.15,
+        -25.25
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.65
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.2,
+        0.21,
+        0.19
+      ]
+    },
+    {
+      "id": 34,
+      "kind": "obstacle",
+      "assembly": "assembly-6",
+      "position": [
+        -21.35,
+        -29.15,
+        -25.25
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.65
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.2,
+        0.21,
+        0.19
+      ]
+    },
+    {
+      "id": 35,
+      "kind": "obstacle",
+      "assembly": "assembly-6",
+      "position": [
+        -23.85,
+        -29.15,
+        -24.75
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.65
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.2,
+        0.21,
+        0.19
+      ]
+    },
+    {
+      "id": 36,
+      "kind": "obstacle",
+      "assembly": "assembly-6",
+      "position": [
+        -21.35,
+        -29.15,
+        -24.75
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.65
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.2,
+        0.21,
+        0.19
+      ]
+    },
+    {
+      "id": 37,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -25.56,
+        -28.3,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        1.5,
+        0.32
+      ],
+      "exponents": [
+        0.1,
+        0.2
+      ],
+      "color": [
+        0.19,
+        0.18,
+        0.15
+      ]
+    },
+    {
+      "id": 38,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -23.84,
+        -28.3,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        1.5,
+        0.32
+      ],
+      "exponents": [
+        0.1,
+        0.2
+      ],
+      "color": [
+        0.19,
+        0.18,
+        0.15
+      ]
+    },
+    {
+      "id": 39,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -28.3,
+        -12.58
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        1.5,
+        0.05
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.15,
+        0.15,
+        0.13
+      ]
+    },
+    {
+      "id": 40,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -29.68,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.22,
+        0.17
+      ]
+    },
+    {
+      "id": 41,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -29.05,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.22,
+        0.17
+      ]
+    },
+    {
+      "id": 42,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -28.42,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.22,
+        0.17
+      ]
+    },
+    {
+      "id": 43,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -27.79,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.22,
+        0.17
+      ]
+    },
+    {
+      "id": 44,
+      "kind": "obstacle",
+      "assembly": "assembly-25",
+      "position": [
+        -24.7,
+        -27.16,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.82,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.22,
+        0.17
+      ]
+    },
+    {
+      "id": 45,
+      "kind": "obstacle",
+      "assembly": "assembly-16",
+      "position": [
+        -25.28,
+        -29.467,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.108,
+        0.153,
+        0.252
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 46,
+      "kind": "obstacle",
+      "assembly": "assembly-23",
+      "position": [
+        -24.98,
+        -29.45,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.17,
+        0.28
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 47,
+      "kind": "obstacle",
+      "assembly": "assembly-15",
+      "position": [
+        -24.68,
+        -29.425,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.138,
+        0.196,
+        0.322
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 48,
+      "kind": "obstacle",
+      "assembly": "assembly-24",
+      "position": [
+        -24.372,
+        -28.83,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "scale": [
+        0.114,
+        0.162,
+        0.266
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 49,
+      "kind": "obstacle",
+      "assembly": "assembly-8",
+      "position": [
+        -24.05,
+        -28.82,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.17,
+        0.28
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 50,
+      "kind": "obstacle",
+      "assembly": "assembly-21",
+      "position": [
+        -25.22,
+        -28.19,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.17,
+        0.28
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 51,
+      "kind": "obstacle",
+      "assembly": "assembly-27",
+      "position": [
+        -24.901,
+        -28.208,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        353.0
+      ],
+      "scale": [
+        0.108,
+        0.153,
+        0.252
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 52,
+      "kind": "obstacle",
+      "assembly": "assembly-12",
+      "position": [
+        -24.62,
+        -28.173,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.132,
+        0.187,
+        0.308
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 53,
+      "kind": "obstacle",
+      "assembly": "assembly-9",
+      "position": [
+        -24.28,
+        -27.56,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.17,
+        0.28
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 54,
+      "kind": "obstacle",
+      "assembly": "assembly-22",
+      "position": [
+        -24.028,
+        -27.571,
+        -12.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        10.0
+      ],
+      "scale": [
+        0.114,
+        0.162,
+        0.266
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.34,
+        0.15,
+        0.1
+      ]
+    },
+    {
+      "id": 55,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.82,
+        -28.55,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        1.25,
+        0.42
+      ],
+      "exponents": [
+        0.1,
+        0.2
+      ],
+      "color": [
+        0.2,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "id": 56,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -6.48,
+        -28.55,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        1.25,
+        0.42
+      ],
+      "exponents": [
+        0.1,
+        0.2
+      ],
+      "color": [
+        0.2,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "id": 57,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.15,
+        -28.55,
+        -16.57
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.67,
+        1.25,
+        0.05
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.16,
+        0.18,
+        0.17
+      ]
+    },
+    {
+      "id": 58,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.15,
+        -29.72,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.67,
+        0.08,
+        0.42
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.26,
+        0.23
+      ]
+    },
+    {
+      "id": 59,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.15,
+        -27.38,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.67,
+        0.08,
+        0.42
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.25,
+        0.26,
+        0.23
+      ]
+    },
+    {
+      "id": 60,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.15,
+        -29.08,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.23,
+        0.21
+      ]
+    },
+    {
+      "id": 61,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.15,
+        -28.35,
+        -16.2
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.6,
+        0.05,
+        0.37
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.23,
+        0.21
+      ]
+    },
+    {
+      "id": 62,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.48,
+        -28.55,
+        -15.77
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.31,
+        1.1,
+        0.04
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.27,
+        0.29,
+        0.27
+      ]
+    },
+    {
+      "id": 63,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -6.82,
+        -28.55,
+        -15.77
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.31,
+        1.1,
+        0.04
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.27,
+        0.29,
+        0.27
+      ]
+    },
+    {
+      "id": 64,
+      "kind": "obstacle",
+      "assembly": "assembly-20",
+      "position": [
+        -7.48,
+        -28.55,
+        -15.66
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.025,
+        0.025,
+        0.1
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.55,
+        0.43,
+        0.2
+      ]
+    },
+    {
+      "id": 65,
+      "kind": "obstacle",
+      "assembly": "assembly-29",
+      "position": [
+        -24.55,
+        -29.74,
+        -22.9
+      ],
+      "rotation": [
+        0.0,
+        356.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.06,
+        0.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.28,
+        0.2,
+        0.12
+      ]
+    },
+    {
+      "id": 66,
+      "kind": "obstacle",
+      "assembly": "assembly-29",
+      "position": [
+        -25.139,
+        -29.3,
+        -22.941
+      ],
+      "rotation": [
+        0.0,
+        356.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.45,
+        0.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.31,
+        0.22,
+        0.13
+      ]
+    },
+    {
+      "id": 67,
+      "kind": "obstacle",
+      "assembly": "assembly-29",
+      "position": [
+        -23.961,
+        -29.3,
+        -22.859
+      ],
+      "rotation": [
+        0.0,
+        356.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.45,
+        0.5
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.31,
+        0.22,
+        0.13
+      ]
+    },
+    {
+      "id": 68,
+      "kind": "obstacle",
+      "assembly": "assembly-29",
+      "position": [
+        -24.519,
+        -29.3,
+        -23.339
+      ],
+      "rotation": [
+        0.0,
+        356.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.45,
+        0.06
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.31,
+        0.22,
+        0.13
+      ]
+    },
+    {
+      "id": 69,
+      "kind": "obstacle",
+      "assembly": "assembly-29",
+      "position": [
+        -24.581,
+        -29.3,
+        -22.461
+      ],
+      "rotation": [
+        0.0,
+        356.0,
+        0.0
+      ],
+      "scale": [
+        0.65,
+        0.45,
+        0.06
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.31,
+        0.22,
+        0.13
+      ]
+    },
+    {
+      "id": 70,
+      "kind": "obstacle",
+      "assembly": "assembly-1",
+      "position": [
+        -23.45,
+        -29.373,
+        -20.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.427,
+        0.427,
+        0.427
+      ],
+      "exponents": [
+        0.35,
+        0.55
+      ],
+      "color": [
+        0.18,
+        0.25,
+        0.23
+      ]
+    },
+    {
+      "id": 71,
+      "kind": "obstacle",
+      "assembly": "assembly-1",
+      "position": [
+        -23.45,
+        -28.945,
+        -20.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.456,
+        0.057,
+        0.456
+      ],
+      "exponents": [
+        0.1,
+        0.2
+      ],
+      "color": [
+        0.12,
+        0.16,
+        0.15
+      ]
+    },
+    {
+      "id": 72,
+      "kind": "obstacle",
+      "assembly": "assembly-1",
+      "position": [
+        -23.811,
+        -28.992,
+        -20.8
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.024,
+        0.024,
+        0.38
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.32,
+        0.34,
+        0.3
+      ]
+    },
+    {
+      "id": 73,
+      "kind": "obstacle",
+      "assembly": "assembly-1",
+      "position": [
+        -23.089,
+        -28.992,
+        -20.8
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.024,
+        0.024,
+        0.38
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.32,
+        0.34,
+        0.3
+      ]
+    },
+    {
+      "id": 74,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -12.8,
+        -26.25,
+        -10.85
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.045,
+        0.045,
+        2.8
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.34,
+        0.19,
+        0.12
+      ]
+    },
+    {
+      "id": 75,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -12.8,
+        -26.55,
+        -10.97
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.045,
+        0.045,
+        2.8
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.4,
+        0.24,
+        0.14
+      ]
+    },
+    {
+      "id": 76,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -15.45,
+        -27.0,
+        -10.85
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.045,
+        0.045,
+        0.45
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.32,
+        0.18,
+        0.11
+      ]
+    },
+    {
+      "id": 77,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -10.15,
+        -27.0,
+        -10.85
+      ],
+      "rotation": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.045,
+        0.045,
+        0.45
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.32,
+        0.18,
+        0.11
+      ]
+    },
+    {
+      "id": 78,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -15.45,
+        -26.25,
+        -10.85
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.09,
+        0.09,
+        0.09
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.25,
+        0.12
+      ]
+    },
+    {
+      "id": 79,
+      "kind": "obstacle",
+      "assembly": "assembly-5",
+      "position": [
+        -10.15,
+        -26.25,
+        -10.85
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.09,
+        0.09,
+        0.09
+      ],
+      "exponents": [
+        1.0,
+        1.0
+      ],
+      "color": [
+        0.45,
+        0.25,
+        0.12
+      ]
+    },
+    {
+      "id": 80,
+      "kind": "obstacle",
+      "assembly": "assembly-26",
+      "position": [
+        -19.4,
+        -25.4,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.04,
+        0.04,
+        2.0
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.75,
+        0.8,
+        0.68
+      ]
+    },
+    {
+      "id": 81,
+      "kind": "obstacle",
+      "assembly": "assembly-26",
+      "position": [
+        -21.1,
+        -25.6,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.06,
+        0.08
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.24,
+        0.21
+      ]
+    },
+    {
+      "id": 82,
+      "kind": "obstacle",
+      "assembly": "assembly-26",
+      "position": [
+        -17.7,
+        -25.6,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.12,
+        0.06,
+        0.08
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.24,
+        0.21
+      ]
+    },
+    {
+      "id": 83,
+      "kind": "obstacle",
+      "assembly": "assembly-3",
+      "position": [
+        -13.4,
+        -25.405,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        90.0,
+        0.0
+      ],
+      "scale": [
+        0.038,
+        0.038,
+        1.9
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.75,
+        0.8,
+        0.68
+      ]
+    },
+    {
+      "id": 84,
+      "kind": "obstacle",
+      "assembly": "assembly-3",
+      "position": [
+        -15.015,
+        -25.595,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.114,
+        0.057,
+        0.076
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.24,
+        0.21
+      ]
+    },
+    {
+      "id": 85,
+      "kind": "obstacle",
+      "assembly": "assembly-3",
+      "position": [
+        -11.785,
+        -25.595,
+        -15.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.114,
+        0.057,
+        0.076
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.22,
+        0.24,
+        0.21
+      ]
+    },
+    {
+      "id": 86,
+      "kind": "obstacle",
+      "assembly": "assembly-10",
+      "position": [
+        -21.8,
+        -26.2,
+        -10.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.3,
+        0.15,
+        0.1
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.18,
+        0.16,
+        0.13
+      ]
+    },
+    {
+      "id": 87,
+      "kind": "obstacle",
+      "assembly": "assembly-10",
+      "position": [
+        -21.8,
+        -26.2,
+        -10.68
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.22,
+        0.1,
+        0.04
+      ],
+      "exponents": [
+        0.4,
+        0.5
+      ],
+      "color": [
+        0.75,
+        0.035,
+        0.02
+      ]
+    },
+    {
+      "id": 88,
+      "kind": "obstacle",
+      "assembly": "assembly-10",
+      "position": [
+        -21.8,
+        -26.01,
+        -10.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.25,
+        0.03,
+        0.08
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.26,
+        0.23,
+        0.18
+      ]
+    },
+    {
+      "id": 89,
+      "kind": "obstacle",
+      "assembly": "assembly-7",
+      "position": [
+        -9.6,
+        -26.215,
+        -10.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.27,
+        0.135,
+        0.09
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.18,
+        0.16,
+        0.13
+      ]
+    },
+    {
+      "id": 90,
+      "kind": "obstacle",
+      "assembly": "assembly-7",
+      "position": [
+        -9.6,
+        -26.215,
+        -10.692
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.198,
+        0.09,
+        0.036
+      ],
+      "exponents": [
+        0.4,
+        0.5
+      ],
+      "color": [
+        0.75,
+        0.035,
+        0.02
+      ]
+    },
+    {
+      "id": 91,
+      "kind": "obstacle",
+      "assembly": "assembly-7",
+      "position": [
+        -9.6,
+        -26.044,
+        -10.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.225,
+        0.027,
+        0.072
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.26,
+        0.23,
+        0.18
+      ]
+    },
+    {
+      "id": 92,
+      "kind": "obstacle",
+      "assembly": "assembly-18",
+      "position": [
+        -19.0,
+        -29.775,
+        -23.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.4,
+        0.025,
+        0.7
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.08,
+        0.09,
+        0.08
+      ]
+    },
+    {
+      "id": 93,
+      "kind": "obstacle",
+      "assembly": "assembly-18",
+      "position": [
+        -19.0,
+        -29.73,
+        -23.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.03,
+        0.025,
+        0.65
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.3,
+        0.31,
+        0.27
+      ]
+    },
+    {
+      "id": 94,
+      "kind": "obstacle",
+      "assembly": "assembly-11",
+      "position": [
+        -17.0,
+        -29.777,
+        -23.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.36,
+        0.023,
+        0.63
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.08,
+        0.09,
+        0.08
+      ]
+    },
+    {
+      "id": 95,
+      "kind": "obstacle",
+      "assembly": "assembly-11",
+      "position": [
+        -17.0,
+        -29.737,
+        -23.8
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.027,
+        0.023,
+        0.585
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.3,
+        0.31,
+        0.27
+      ]
+    },
+    {
+      "id": 96,
+      "kind": "obstacle",
+      "assembly": "assembly-0",
+      "position": [
+        -10.85,
+        -27.87,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        352.0,
+        0.0
+      ],
+      "scale": [
+        0.18,
+        0.3,
+        0.12
+      ],
+      "exponents": [
+        0.35,
+        0.5
+      ],
+      "color": [
+        0.68,
+        0.72,
+        0.57
+      ]
+    },
+    {
+      "id": 97,
+      "kind": "obstacle",
+      "assembly": "assembly-0",
+      "position": [
+        -10.85,
+        -27.47,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        352.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.1,
+        0.06
+      ],
+      "exponents": [
+        0.2,
+        0.7
+      ],
+      "color": [
+        0.2,
+        0.26,
+        0.22
+      ]
+    },
+    {
+      "id": 98,
+      "kind": "obstacle",
+      "assembly": "assembly-0",
+      "position": [
+        -10.867,
+        -27.37,
+        -23.881
+      ],
+      "rotation": [
+        0.0,
+        352.0,
+        0.0
+      ],
+      "scale": [
+        0.04,
+        0.04,
+        0.16
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.15,
+        0.18,
+        0.16
+      ]
+    },
+    {
+      "id": 99,
+      "kind": "obstacle",
+      "assembly": "assembly-19",
+      "position": [
+        -9.65,
+        -27.9,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "scale": [
+        0.162,
+        0.27,
+        0.108
+      ],
+      "exponents": [
+        0.35,
+        0.5
+      ],
+      "color": [
+        0.68,
+        0.72,
+        0.57
+      ]
+    },
+    {
+      "id": 100,
+      "kind": "obstacle",
+      "assembly": "assembly-19",
+      "position": [
+        -9.65,
+        -27.54,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "scale": [
+        0.054,
+        0.09,
+        0.054
+      ],
+      "exponents": [
+        0.2,
+        0.7
+      ],
+      "color": [
+        0.2,
+        0.26,
+        0.22
+      ]
+    },
+    {
+      "id": 101,
+      "kind": "obstacle",
+      "assembly": "assembly-19",
+      "position": [
+        -9.628,
+        -27.45,
+        -23.894
+      ],
+      "rotation": [
+        0.0,
+        12.0,
+        0.0
+      ],
+      "scale": [
+        0.036,
+        0.036,
+        0.144
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.15,
+        0.18,
+        0.16
+      ]
+    },
+    {
+      "id": 102,
+      "kind": "obstacle",
+      "assembly": "assembly-13",
+      "position": [
+        -10.37,
+        -28.07,
+        -23.72
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        348.0
+      ],
+      "scale": [
+        0.11,
+        0.06,
+        0.2
+      ],
+      "exponents": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        0.36,
+        0.46,
+        0.25
+      ]
+    },
+    {
+      "id": 103,
+      "kind": "obstacle",
+      "assembly": "assembly-13",
+      "position": [
+        -10.13,
+        -28.07,
+        -23.69
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        15.0
+      ],
+      "scale": [
+        0.11,
+        0.06,
+        0.2
+      ],
+      "exponents": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        0.36,
+        0.46,
+        0.25
+      ]
+    },
+    {
+      "id": 104,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.2,
+        -27.95,
+        -24.0
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.28,
+        0.16,
+        0.2
+      ],
+      "exponents": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        0.1,
+        0.12,
+        0.11
+      ]
+    },
+    {
+      "id": 105,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.292,
+        -27.86,
+        -23.795
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.11,
+        0.11,
+        0.035
+      ],
+      "exponents": [
+        0.8,
+        0.8
+      ],
+      "color": [
+        0.08,
+        0.16,
+        0.18
+      ]
+    },
+    {
+      "id": 106,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.055,
+        -27.86,
+        -23.829
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.11,
+        0.11,
+        0.035
+      ],
+      "exponents": [
+        0.8,
+        0.8
+      ],
+      "color": [
+        0.08,
+        0.16,
+        0.18
+      ]
+    },
+    {
+      "id": 107,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.174,
+        -27.78,
+        -23.812
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        0.05,
+        0.04
+      ],
+      "exponents": [
+        0.4,
+        0.6
+      ],
+      "color": [
+        0.16,
+        0.18,
+        0.16
+      ]
+    },
+    {
+      "id": 108,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.174,
+        -28.04,
+        -23.812
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.08,
+        0.08,
+        0.13
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.2,
+        0.22,
+        0.2
+      ]
+    },
+    {
+      "id": 109,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.153,
+        -28.04,
+        -23.663
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.07,
+        0.07,
+        0.03
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        0.42,
+        0.39,
+        0.28
+      ]
+    },
+    {
+      "id": 110,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.391,
+        -28.0,
+        -23.923
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.1
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.24,
+        0.25,
+        0.22
+      ]
+    },
+    {
+      "id": 111,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -9.995,
+        -28.0,
+        -23.978
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.06,
+        0.06,
+        0.1
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.24,
+        0.25,
+        0.22
+      ]
+    },
+    {
+      "id": 112,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -10.459,
+        -27.92,
+        -24.044
+      ],
+      "rotation": [
+        180.0,
+        82.0,
+        180.0
+      ],
+      "scale": [
+        0.025,
+        0.025,
+        0.18
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.08,
+        0.09,
+        0.08
+      ]
+    },
+    {
+      "id": 113,
+      "kind": "obstacle",
+      "assembly": "assembly-4",
+      "position": [
+        -9.964,
+        -27.92,
+        -24.114
+      ],
+      "rotation": [
+        180.0,
+        82.0,
+        180.0
+      ],
+      "scale": [
+        0.025,
+        0.025,
+        0.18
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        0.08,
+        0.09,
+        0.08
+      ]
+    },
+    {
+      "id": 114,
+      "kind": "obstacle",
+      "assembly": "assembly-14",
+      "position": [
+        -25.72,
+        -28.2,
+        -14.7
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.04,
+        1.6,
+        1.4
+      ],
+      "exponents": [
+        0.1,
+        0.1
+      ],
+      "color": [
+        0.1,
+        0.14,
+        0.13
+      ]
+    },
+    {
+      "id": 115,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.73,
+        -27.32,
+        -18.053
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.262,
+        0.15,
+        0.187
+      ],
+      "exponents": [
+        0.5,
+        0.5
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 116,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.816,
+        -27.236,
+        -17.861
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.103,
+        0.103,
+        0.033
+      ],
+      "exponents": [
+        0.8,
+        0.8
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 117,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.594,
+        -27.236,
+        -17.892
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.103,
+        0.103,
+        0.033
+      ],
+      "exponents": [
+        0.8,
+        0.8
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 118,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.705,
+        -27.161,
+        -17.877
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.075,
+        0.047,
+        0.037
+      ],
+      "exponents": [
+        0.4,
+        0.6
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 119,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.705,
+        -27.404,
+        -17.877
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.075,
+        0.075,
+        0.122
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 120,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.685,
+        -27.404,
+        -17.738
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.066,
+        0.066,
+        0.028
+      ],
+      "exponents": [
+        0.2,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 121,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.908,
+        -27.367,
+        -17.98
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.056,
+        0.056,
+        0.094
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 122,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.538,
+        -27.367,
+        -18.032
+      ],
+      "rotation": [
+        0.0,
+        8.0,
+        0.0
+      ],
+      "scale": [
+        0.056,
+        0.056,
+        0.094
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 123,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.972,
+        -27.292,
+        -18.094
+      ],
+      "rotation": [
+        180.0,
+        82.0,
+        180.0
+      ],
+      "scale": [
+        0.023,
+        0.023,
+        0.168
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    },
+    {
+      "id": 124,
+      "kind": "lock",
+      "assembly": "door",
+      "position": [
+        -25.508,
+        -27.292,
+        -18.159
+      ],
+      "rotation": [
+        180.0,
+        82.0,
+        180.0
+      ],
+      "scale": [
+        0.023,
+        0.023,
+        0.168
+      ],
+      "exponents": [
+        0.3,
+        1.0
+      ],
+      "color": [
+        1.0,
+        0.85,
+        0.1
+      ]
+    }
+  ],
+  "meta": {
+    "theme": "The Permafrost Directorate",
+    "description": "An abandoned Soviet-era research bunker buried deep underground, organized around a narrow service corridor and sealed laboratories. Flickering fluorescent tubes, rusted control\n    panels, stained concrete, and obsolete scientific equipment give the facility a cold, decaying character.",
+    "source": "agent",
+    "room_source": "agent",
+    "match_tolerance": {
+      "scale": 0.05,
+      "exponents": 0.05
+    },
+    "layout": {
+      "theme": "The Permafrost Directorate",
+      "description": "An abandoned Soviet-era research bunker buried deep underground, organized around a narrow service corridor and sealed laboratories. Flickering fluorescent tubes, rusted control\n    panels, stained concrete, and obsolete scientific equipment give the facility a cold, decaying character.",
+      "path": [
+        0
+      ],
+      "rooms": [
+        {
+          "id": "decontamination-vestibule",
+          "name": "The Decontamination Vestibule",
+          "style": "A cramped entry chamber with concrete wash bays, corroded pipes, grated drains, rubberized wall panels, and red emergency lamps beneath flickering fluorescent tubes.",
+          "level": 0,
+          "index": 0,
+          "box": [
+            [
+              -26.0,
+              -30.0,
+              -26.0
+            ],
+            [
+              -6.0,
+              -25.0,
+              -10.0
+            ]
+          ],
+          "palette": {
+            "wall": [
+              0.28,
+              0.3,
+              0.28
+            ],
+            "floor": [
+              0.16,
+              0.18,
+              0.17
+            ],
+            "ceiling": [
+              0.42,
+              0.44,
+              0.39
+            ]
+          }
+        }
+      ],
+      "doors": [
+        {
+          "a": 0,
+          "b": null,
+          "id": 9
+        }
+      ]
+    },
+    "task": {
+      "0": {
+        "key_concept": "gas mask",
+        "key_assembly": "assembly-4",
+        "door_id": 9,
+        "lock_ids": [
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124
+        ]
+      }
+    },
+    "generation_s": 353.7
+  }
+}
