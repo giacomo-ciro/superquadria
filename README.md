@@ -26,6 +26,9 @@ After the engine checks for collisions, out-of-bounds placement, etc., the 3D wo
 
 The agent starts in the first room, with everything in front of it visible (i.e., visible shape parameters are listed in the navigation prompt). It is told the shape of the key it needs to find. It freely explores the room, picking up and placing objects, until it finds the key, places it on the door, and unlocks it. Once done, it proceeds to the next room and the process repeats. The game ends when the agent clears all rooms or reaches the maximum number of collisions or calls.
 
+<img src="assets/codex.png" width="100%">
+<p align="center"><em>Codex navigating a generated world.</em></p>
+
 ## Usage
 
 The engine drives an interactive window where the world is rendered and the policy animated.
