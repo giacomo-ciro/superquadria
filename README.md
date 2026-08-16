@@ -33,13 +33,15 @@ The agent starts in the first room, with everything in front of it visible (i.e.
 
 The engine drives an interactive window where the world is rendered and the policy animated.
 
+**Requirements:** `codex` (or `claude`) CLI downloaded and authenticated.
+
 ### Quickstart
 
 ```bash
 uv sync                              # Python >=3.12
 
-python -m engine generate            # agent generates world
 python -m engine run                 # agent generates, agent navigates
+python -m engine generate            # agent generates world
 python -m engine play                # play a saved world under worlds/
 python -m engine replay              # re-watch a saved episode
 ```
