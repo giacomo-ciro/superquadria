@@ -1,8 +1,8 @@
 <h1 align="center">Superquadria: Generating and Navigating 3D Environments with Agents</h1>
 
-> An agent harness that **builds a 3D environment** and then **plays it**, using only text prompts.
+> An agent harness that **builds a 3D world** and then **plays it**, using only text prompts.
 
-<video src="assets/replay.mp4" autoplay loop muted playsinline controls width="100%"></video>
+https://github.com/user-attachments/assets/251657ec-7505-4604-8c4d-1fc6dd699a5e
 
 The world is made of rooms, connected in a feed-forward fashion (from a start room, one way toward a final room). Each room has its own theme, kept coherent with the others so the world reads as a single, consistent environment. The doors between rooms are initially locked. The goal of the agent is to find an object that unlocks the door, pick it up, place it on the door, and proceed. The more rooms the agent clears before running out of budget (collisions, calls, runtime), the higher the score.
 
@@ -56,7 +56,7 @@ Agent-specific settings can be specified in [`configs/agent/codex.yaml`](./confi
 
 ### Watching Agents Live
 
-All agents run inside a single persistent `tmux` session — `superquadria` — with one window per step (`layout`, `room1`, `room2`, ..., `player`). Attach directly from the terminal to inspect exactly what's happening: what the agent is receiving as input, how it's reasoning, and what it's returning as output.
+All agents run inside a single persistent `tmux` session with one window per step (`layout`, `room1`, `room2`, ..., `player`). Attach directly from the terminal to inspect exactly what's happening: what the agent is receiving as input, how it's reasoning, and what it's returning as output.
 
 The harness logs the attach command when it spawns a window; paste it into another terminal to watch that agent live:
 ```bash
