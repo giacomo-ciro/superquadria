@@ -690,7 +690,7 @@ def main(argv: list[str] | None = None) -> int:
             binary=binary,
             timeout=float(config.agent.timeout),
             max_retries=int(config.agent.retries),
-            session_name="general-intuition-prompt-iter",
+            session_name="superquadria-prompt-iter",
             window_name="room-iter",
             effort=effort,
         )

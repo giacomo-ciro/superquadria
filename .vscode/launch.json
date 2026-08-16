@@ -2,48 +2,48 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Generate claude",
+            "name": "Generate",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/main.py",
+            "module": "engine",
             "args": ["generate"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Play claude",
+            "name": "Play",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/main.py",
+            "module": "engine",
             "args": ["play"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
         },
         {
-            "name": "Full run offline",
+            "name": "Run",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/main.py",
-            "args": ["run", "--offline"],
-            "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "Full run real",
-            "type": "debugpy",
-            "request": "launch",
-            "python": "${workspaceFolder}/.venv/bin/python",
-            "program": "${workspaceFolder}/main.py",
+            "module": "engine",
             "args": ["run"],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "justMyCode": true
         },
+        {
+            "name": "Replay",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "module": "engine",
+            "args": ["replay"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
     ]
 }

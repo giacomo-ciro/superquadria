@@ -162,8 +162,6 @@ def place_at(
     target: Vec3,
     *,
     reach: float = DEFAULT_REACH,
-    tol_scale: float = 0.05,
-    tol_exp: float = 0.05,
 ) -> tuple[bool, str, str | None]:
     """Place the carried assembly at `target`, or attempt unlock if target or
     player is near a door/lock.
@@ -194,9 +192,7 @@ def place_at(
                 break
 
     if door_or_lock is not None:
-        opened = attempt_unlock(
-            scene, door_or_lock.id, tol_scale=tol_scale, tol_exp=tol_exp
-        )
+        opened = attempt_unlock(scene, door_or_lock.id)
         if opened:
             return True, "unlocked the door with the carried object", "opened"
         else:
@@ -231,9 +227,7 @@ def task_for_door_or_lock(scene: Scene, prim_id: int) -> dict | None:
     return None
 
 
-def attempt_unlock(
-    scene: Scene, prim_id: int, *, tol_scale: float = 0.05, tol_exp: float = 0.05
-) -> bool:
+def attempt_unlock(scene: Scene, prim_id: int) -> bool:
     """Try the carried assembly against a door or its lock.
 
     Always clears inventory. If the carried assembly matches the task's key,

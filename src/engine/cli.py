@@ -1,7 +1,6 @@
 """Command line entrypoints: `generate`, `play`, `run`, `replay`.
 
-All settings besides the command and `--offline` live in `configs/config.yaml`, read
-fresh on every run — see `.config`.
+All settings live in `configs/config.yaml`, read fresh on every run — see `.config`.
 """
 
 from __future__ import annotations
@@ -46,22 +45,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    gen = sub.add_parser("generate", help="generate a world and save it under worlds/")
-    gen.add_argument(
-        "--offline", action="store_true", help="procedural world, zero agent calls"
-    )
+    sub.add_parser("generate", help="generate a world and save it under worlds/")
 
     sub.add_parser(
         "play", help="pick a saved world under worlds/ and fly a fresh episode on it"
     )
 
-    run = sub.add_parser(
+    sub.add_parser(
         "run", help="generate a world under worlds/, then immediately fly it"
-    )
-    run.add_argument(
-        "--offline",
-        action="store_true",
-        help="procedural world plus manual play — zero agent calls",
     )
 
     sub.add_parser("replay", help="pick a saved episode under episodes/ and replay it")
@@ -72,13 +63,13 @@ def build_parser() -> argparse.ArgumentParser:
 # --------------------------------------------------------------------- helpers
 
 
-def _log_config(config: DictConfig, command: str, *, offline: bool = False) -> None:
+def _log_config(config: DictConfig, command: str) -> None:
     agent_cfg = config.get("agent", {})
     gen_cfg = config.get("generation", {})
     ep_cfg = config.get("episode", {})
 
-    logger.log(f"command: {command}{' --offline' if offline else ''}", stage="config")
-    if not offline and agent_cfg:
+    logger.log(f"command: {command}", stage="config")
+    if agent_cfg:
         logger.log(
             f"agent: {agent_cfg.get('name', 'agent')} "
             f"(model={agent_cfg.get('model', '?')}, "
@@ -94,7 +85,7 @@ def _log_config(config: DictConfig, command: str, *, offline: bool = False) -> N
             stage="config",
         )
     if ep_cfg and command in ("play", "run"):
-        pol = "manual" if offline else ep_cfg.get("policy", "agent")
+        pol = ep_cfg.get("policy", "agent")
         max_dist = ep_cfg.get("max_distance", 600.0)
         dist_str = "inf" if max_dist == float("inf") else f"{max_dist:.0f}m"
         logger.log(
@@ -120,26 +111,19 @@ def _make_agent(
         binary=cfg.binary,
         timeout=cfg.timeout,
         max_retries=cfg.retries,
-        session_name=session_name or "general-intuition",
+        session_name=session_name or "superquadria",
         window_name=window_name or role,
         effort=cfg.effort,
     )
 
 
-def _generate(config: DictConfig, *, offline: bool) -> Scene:
+def _generate(config: DictConfig) -> Scene:
     gen = config.generation
-    generator_agent = (
-        None
-        if offline
-        else _make_agent(config.agent, role="generator", window_name="layout")
-    )
-    if generator_agent is not None:
-        generator_agent.clean()
+    generator_agent = _make_agent(config.agent, role="generator", window_name="layout")
+    generator_agent.clean()
     generator = WorldGenerator(
         agent=generator_agent,
-        room_agent_factory=None
-        if offline
-        else (
+        room_agent_factory=(
             lambda room, idx: _make_agent(
                 config.agent, role="generator", window_name=f"room{idx}"
             )
@@ -148,13 +132,7 @@ def _generate(config: DictConfig, *, offline: bool) -> Scene:
         max_rooms=gen.get("rooms", 1),
     )
     started = time.monotonic()
-    # `--offline` ignores the configured brief entirely: it directs agent
-    # generation and there is no agent here to direct.
-    scene = (
-        generator.generate_offline()
-        if offline
-        else generator.generate(gen.get("brief"))
-    )
+    scene = generator.generate(gen.get("brief"))
     scene.meta["generation_s"] = round(time.monotonic() - started, 1)
     room0 = scene.meta["layout"]["rooms"][0]
     n_locks = len(scene.meta["task"])
@@ -183,17 +161,13 @@ def _make_policy(config: DictConfig, renderer, scene: Scene, name: str) -> Polic
     raise RuntimeError(f"unknown episode.policy {name!r} — expected agent or manual")
 
 
-def _play(
-    config: DictConfig, scene: Scene, world: Path, out: Path, *, offline: bool = False
-) -> int:
+def _play(config: DictConfig, scene: Scene, world: Path, out: Path) -> int:
     from .render import (
         UrsinaRenderer,  # imported here so `generate` never touches Ursina
     )
 
     ep = config.episode
-    # `run --offline` means procedural generation followed by manual play, which
-    # is what guarantees the whole command makes zero agent calls.
-    policy_name = "manual" if offline else ep.policy
+    policy_name = ep.policy
     logger.log(f"loading scene ({len(scene.primitives)} primitives)...", stage="render")
     sensor = Sensor()
     renderer = UrsinaRenderer(scene, sensor=sensor, mouse_look=policy_name == "manual")
@@ -259,7 +233,12 @@ def _play(
 def _list_json(root: Path) -> list[Path]:
     if not root.exists():
         return []
-    return sorted(root.glob("*.json"), key=lambda p: p.name, reverse=True)
+    return sorted(
+        root.glob("*.json"),
+        key=lambda p: [
+            int(c) if c.isdigit() else c.lower() for c in re.split(r"(\d+)", p.name)
+        ],
+    )
 
 
 def _prompt_choice(paths: list[Path], verb: str) -> Path:
@@ -278,10 +257,10 @@ def _world_path(scene: Scene, stamp: str) -> Path:
     """Where to write a freshly generated world.
 
     Named after the theme the generator gave it, so `worlds/` reads as a list of
-    designs. A world the agent did not actually design keeps the timestamp.
+    designs.
     """
-    theme = scene.meta.get("theme") if scene.meta.get("source") == "agent" else None
-    stem = (_slugify(theme) if theme else "") or f"procedural-{stamp}"
+    theme = scene.meta.get("theme")
+    stem = (_slugify(theme) if theme else "") or f"world-{stamp}"
     # A saved episode points at its world by path, so reusing a name would
     # silently repoint old episodes at different geometry.
     path = WORLDS_DIR / f"{stem}.json"
@@ -290,6 +269,20 @@ def _world_path(scene: Scene, stamp: str) -> Path:
         path = WORLDS_DIR / f"{stem}-{nth}.json"
         nth += 1
     return path
+
+
+def _world_name(path: Path) -> str:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        meta = payload.get("meta", {})
+        theme = (
+            meta.get("theme") or meta.get("layout", {}).get("theme") or meta.get("name")
+        )
+        if theme and str(theme).strip():
+            return str(theme).strip()
+    except (OSError, json.JSONDecodeError):
+        pass
+    return path.name
 
 
 def _pick_world(config: DictConfig) -> tuple[Scene, Path] | None:
@@ -302,7 +295,7 @@ def _pick_world(config: DictConfig) -> tuple[Scene, Path] | None:
         return None
     logger.log(f"{len(worlds)} world(s) available under {WORLDS_DIR}/:", stage="play")
     for i, path in enumerate(worlds, 1):
-        print(f"  {i:>2}. {path.name}")
+        print(f"  {i:>2}. {_world_name(path)}")
     path = _prompt_choice(worlds, "play")
     return Scene.load(path), path
 
@@ -325,11 +318,10 @@ def _replay(config: DictConfig) -> int:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
             verdict = "solved" if payload.get("solved") else "not solved"
-            print(
-                f"  {i:>2}. {path.name}  [{verdict}, "
-                f"{payload.get('calls', '?')} calls, "
-                f"on {payload.get('world', '?')}]"
-            )
+            world_entry = payload.get("world", "?")
+            world_name = _world_name(Path(world_entry)) if world_entry != "?" else "?"
+            calls = payload.get("calls", "?")
+            print(f"  {i:>2}. {path.name}  [{verdict}, {calls} calls, on {world_name}]")
         except (OSError, json.JSONDecodeError):
             print(f"  {i:>2}. {path.name}")
     episode_path = _prompt_choice(episodes, "replay")
@@ -343,7 +335,7 @@ def _replay(config: DictConfig) -> int:
     try:
         logger.log(f"{episode_path.name}: {result.summary()}", stage="replay")
         logger.log(
-            "SPACE play/pause, +/- speed, R restart, close the window to quit",
+            "close the window to quit",
             stage="replay",
         )
         Replay(
@@ -377,10 +369,14 @@ def _dispatch(argv: list[str] | None = None) -> int:
     stamp = time.strftime("%Y%m%d-%H%M%S")
     episode_path = EPISODES_DIR / f"episode-{stamp}.json"
 
-    _log_config(config, args.command, offline=getattr(args, "offline", False))
+    _log_config(config, args.command)
 
     if args.command == "generate":
-        scene = _generate(config, offline=args.offline)
+        try:
+            scene = _generate(config)
+        except Exception as exc:
+            logger.log(f"generation failed: {exc}", stage="generation")
+            return 1
         world_path = scene.save(_world_path(scene, stamp))
         logger.log(f"saved to {world_path}", stage="generation")
         return 0
@@ -396,14 +392,18 @@ def _dispatch(argv: list[str] | None = None) -> int:
             stage="play",
         )
         if config.episode.policy == "agent":
-            Agent.clean_session_windows("general-intuition")
+            Agent.clean_session_windows("superquadria")
         return _play(config, scene, world_path, episode_path)
 
     if args.command == "run":
-        scene = _generate(config, offline=args.offline)
+        try:
+            scene = _generate(config)
+        except Exception as exc:
+            logger.log(f"generation failed: {exc}", stage="generation")
+            return 1
         world_path = scene.save(_world_path(scene, stamp))
         logger.log(f"saved to {world_path}", stage="generation")
-        return _play(config, scene, world_path, episode_path, offline=args.offline)
+        return _play(config, scene, world_path, episode_path)
 
     if args.command == "replay":
         return _replay(config)

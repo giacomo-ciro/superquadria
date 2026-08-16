@@ -1,6 +1,6 @@
 """YAML configuration loading, via Hydra/OmegaConf.
 
-The CLI takes only a command and `--offline`; every other knob —
+The CLI takes only a command; every other knob —
 agent settings, world size, episode settings — lives in the config
 under `configs/` (`configs/config.yaml`), which is also the
 single source of defaults: nothing here re-declares them, so an omitted key

@@ -15,7 +15,6 @@ prompt compliance.
 from __future__ import annotations
 
 import math
-import random
 from collections import deque
 from dataclasses import dataclass
 
@@ -27,74 +26,6 @@ Triple = tuple[float, float, float]
 #: A wall normal to X reads (Y, Z); one normal to Z reads (X, Y). Getting this
 #: backwards silently transposes door width and height.
 IN_PLANE = {0: (1, 2), 1: (0, 2), 2: (0, 1)}
-
-ROOM_NAMES = [
-    "Copper Galley",
-    "Ash Stair",
-    "Slate Parlour",
-    "Amber Vault",
-    "Cinder Hall",
-    "Quill Study",
-    "Lime Pantry",
-    "Iron Landing",
-    "Moss Atrium",
-    "Chalk Gallery",
-    "Rust Workshop",
-    "Pearl Solar",
-]
-
-FALLBACK_THEMES = ["Procedural Building", "Untitled Wing", "Bare Partition"]
-
-FALLBACK_KEY_CONCEPTS = [
-    "guitar",
-    "tree",
-    "chair",
-    "lamp",
-    "telescope",
-    "sword",
-    "chalice",
-    "clock",
-    "anvil",
-    "pencil",
-]
-
-PROCEDURAL_PALETTES = [
-    {
-        "wall": (0.82, 0.80, 0.76),
-        "floor": (0.42, 0.36, 0.30),
-        "ceiling": (0.92, 0.90, 0.88),
-    },
-    {
-        "wall": (0.75, 0.78, 0.82),
-        "floor": (0.28, 0.32, 0.38),
-        "ceiling": (0.90, 0.92, 0.95),
-    },
-    {
-        "wall": (0.85, 0.82, 0.75),
-        "floor": (0.50, 0.35, 0.25),
-        "ceiling": (0.95, 0.93, 0.90),
-    },
-    {
-        "wall": (0.78, 0.82, 0.78),
-        "floor": (0.32, 0.40, 0.34),
-        "ceiling": (0.90, 0.94, 0.90),
-    },
-    {
-        "wall": (0.80, 0.78, 0.80),
-        "floor": (0.35, 0.30, 0.35),
-        "ceiling": (0.92, 0.90, 0.92),
-    },
-    {
-        "wall": (0.88, 0.84, 0.78),
-        "floor": (0.45, 0.40, 0.35),
-        "ceiling": (0.96, 0.94, 0.92),
-    },
-]
-
-#: Rooms per level in the zero-agent-call fallback. Not a config knob: choosing
-#: room count is the layout agent's job, and this stands in for it only when
-#: there is no agent.
-FALLBACK_ROOMS_PER_LEVEL = 6
 
 
 @dataclass(frozen=True)
@@ -579,96 +510,3 @@ def validate_and_repair(raw: dict, cfg: WorldConfig) -> Layout:
         path=path,
         doors=doors,
     )
-
-
-# ---------------------------------------------------------------- procedural
-
-
-def _partition(rng: random.Random, cells: int, count: int, min_cells: int):
-    """Binary space partition of the floor plate into `count` footprints.
-
-    Stops early when nothing left is big enough to split, which is the honest
-    answer for a plate that cannot hold that many rooms at this grid.
-    """
-    rects = [(0, 0, cells, cells)]
-    while len(rects) < count:
-        splittable = [
-            r
-            for r in rects
-            if r[2] - r[0] >= 2 * min_cells or r[3] - r[1] >= 2 * min_cells
-        ]
-        if not splittable:
-            break
-        u0, v0, u1, v1 = max(splittable, key=lambda r: (r[2] - r[0]) * (r[3] - r[1]))
-        rects.remove((u0, v0, u1, v1))
-        wide = (u1 - u0) >= (v1 - v0)
-        if wide and u1 - u0 >= 2 * min_cells:
-            cut = rng.randint(u0 + min_cells, u1 - min_cells)
-            rects += [(u0, v0, cut, v1), (cut, v0, u1, v1)]
-        elif v1 - v0 >= 2 * min_cells:
-            cut = rng.randint(v0 + min_cells, v1 - min_cells)
-            rects += [(u0, v0, u1, cut), (u0, cut, u1, v1)]
-        else:
-            cut = rng.randint(u0 + min_cells, u1 - min_cells)
-            rects += [(u0, v0, cut, v1), (cut, v0, u1, v1)]
-    return rects
-
-
-def procedural_layout(
-    rng: random.Random,
-    cfg: WorldConfig,
-    *,
-    rooms_per_level: int = FALLBACK_ROOMS_PER_LEVEL,
-    levels: int | None = None,
-) -> dict:
-    """A raw layout dict, in the same shape an agent call would return.
-
-    Zero agent calls: a binary-space partition per level, offered to
-    `validate_and_repair` exactly as an agent's answer would be — decision 9's
-    "one validation path", so the fallback can never be more permissive than a
-    real generation.
-    """
-    cells, min_cells = cfg.cells, cfg.min_cells
-    levels = max(
-        1, min(cfg.max_levels, levels if levels is not None else cfg.max_levels)
-    )
-    rooms, index = [], 0
-    for level in range(levels):
-        for ix0, iz0, ix1, iz1 in _partition(rng, cells, rooms_per_level, min_cells):
-            pal = PROCEDURAL_PALETTES[index % len(PROCEDURAL_PALETTES)]
-            rooms.append(
-                {
-                    "id": f"room-{index}",
-                    "name": ROOM_NAMES[index % len(ROOM_NAMES)],
-                    "style": (
-                        "Bare stone walls and a plain floor — an undecorated "
-                        "procedural room."
-                    ),
-                    "key_concept": FALLBACK_KEY_CONCEPTS[
-                        index % len(FALLBACK_KEY_CONCEPTS)
-                    ],
-                    "palette": {
-                        "wall": list(pal["wall"]),
-                        "floor": list(pal["floor"]),
-                        "ceiling": list(pal["ceiling"]),
-                    },
-                    "level": level,
-                    "origin": [ix0, iz0],
-                    "size": [ix1 - ix0, iz1 - iz0],
-                }
-            )
-            index += 1
-
-    connections = [
-        {"from": rooms[a]["id"], "to": rooms[b]["id"]}
-        for a in range(len(rooms))
-        for b in range(a + 1, len(rooms))
-    ]
-
-    return {
-        "theme": rng.choice(FALLBACK_THEMES),
-        "description": "A procedurally partitioned building.",
-        "levels": levels,
-        "rooms": rooms,
-        "connections": connections,
-    }

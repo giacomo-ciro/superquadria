@@ -1,7 +1,4 @@
 An agent harness that **generates a 3D superquadric environment and then plays it**.
-Challenge spec: [TASK.md](TASK.md) · user-facing docs: [README.md](README.md). Read those before changing behaviour.
-
-## The idea
 
 Both halves go through one abstraction — `Agent.run(prompt, schema) -> structured_output`,
 implemented by driving an interactive coding CLI (`claude` or `codex`, chosen by the
@@ -39,42 +36,18 @@ The harness is launched via `python -m engine` and reads `configs/config.yaml`.
 | [prompts/](src/prompts/) | Prompt engineering | `layout.py`, `room.py`, `navigation.py` |
 | [engine/](src/engine/) | Execution & CLI | `engine.py`, `render.py`, `config.py`, `cli.py` |
 
-Rules:
-- **The agent sees parameters, not pixels.** This is a deliberate departure from
-  TASK.md's vision-policy context — document it, don't quietly present it as
-  equivalent. Once any part of an assembly is detected the agent receives the whole
-  assembly (all its primitives).
-- **`SpatialMemory` holds only primitives a sensor query actually returned.** Never
-  the handler, never the generation-time voxel graph.
-- **The handler is authoritative, Ursina is not.** Collision, success and visibility
-  are computed from harness meshes, so generation and headless checks run without a
-  display. Import Ursina lazily, inside the renderer only.
-- **The harness places the spawn and objects (peg + decoys), not the generation agent**
-  — after proving a route exists with the same clearance test movement uses.
-- **The sensor has no range limit.** It sees everything in the camera frustum that
-  nothing else is hiding. Measured as having zero cost difference from the old range
-  inside sealed rooms.
-- **Colour is generation-designed.** Generation agents color assemblies following
-  each room's palette (walls, floor, ceiling). Only the lock is consistently gold.
-- **Interaction is explicit `pick`/`place`, not collision-triggered.** Flying through an
-  object or door does nothing by itself; the agent must issue a `pick`/`place` action
-  within reach (`task.DEFAULT_REACH`, 2.5 units). `place` away from the door/lock drops
-  the carried object back into the room — carrying a decoy does not force a trip to the
-  door, only the single-slot inventory does.
-
 ## Commands
 
 ```bash
 uv sync                              # Python >=3.12, deps in pyproject.toml
-python -m engine generate --offline  # procedural world, zero agent calls
-python -m engine run --offline       # procedural building + manual flight (smoke test)
+python -m engine generate            # agent generates world
 python -m engine run                 # agent generates, agent flies
 python -m engine play                # pick a saved world under worlds/
 python -m engine replay              # re-watch a saved episode
 ```
 
 ## Conventions
-- **Minimal docs.** Keep documentation (README.md, helps) minimal. We are still in MVP phase, everything can change. README should just explain entry points and overall arch, nothing more.
+- **Minimal docs.** Keep documentation (README.md, helps) minimal. We are still in MVP phase, everything can change.
 - **Don't implement tests.** We are developing an MVP and we want to move fast.
-- **Never trust model output.** Parse defensively, fall back procedurally — one bad call must not sink a run.
+- **Never trust model output.** Parse defensively — if generation fails, exit with an informative error rather than falling back procedurally.
 - Running the loop consumes agent usage credits. Do not run without asking the user or unless explicitly instructed.

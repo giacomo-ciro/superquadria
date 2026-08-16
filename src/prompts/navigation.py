@@ -72,48 +72,28 @@ def nav_user_prompt(
 
     reach = _sensor_reach_text(sensor_range)
 
-    return f"""Find the object matching the required shape name, carry it to the door, \
-and open it. Each
-room on your route has its own locked door requiring its own key shape — solving \
-this one only lets you
-into the next room, which has a new lock requirement.
+    return f"""Find the object matching the required shape name, carry it to the door, and open it. Each room on your route has its own locked door requiring its own key shape — solving this one only lets you into the next room, which has a new lock requirement.
 
-The building is made entirely of superquadrics. Walls, floors, ceilings, furniture \
-and the
-locked door are solid and block you.
+The building is made entirely of superquadrics. Walls, floors, ceilings, furniture and the locked door are solid and block you.
 
-You are in {state.room or "an unnamed room"}, at {state.player_position}, looking \
-along
-{state.forward}. This is call {state.calls + 1}.{budget}
+You are in {state.room or "an unnamed room"}, at {state.player_position}, looking along {state.forward}. This is call {state.calls + 1}.{budget}
 {travelled} units so far, with {collided}.
-Rooms cleared: {state.rooms_cleared}. Failed attempts: {state.failed_attempts}.
+Failed attempts: {state.failed_attempts}.
 Result of your previous batch: {state.last_outcome}
 
 {lock_line}
 {carrying_line}
 
 HOW THE TASK WORKS:
-- Each room on your path has a locked door requiring a specific shape name (e.g. \
-GUITAR, CHAIR, LAMP, SWORD, TELESCOPE) shown above at 'THE DOOR LOCK REQUIRES'.
-- Explore the room and inspect the assemblies detected by your sensor. Each \
-assembly (assembly-0, assembly-1, ...)
-  is a compound object made of one or more superquadric primitives.
-- Determine which assembly matches the required shape name based on its geometric \
-composition (the sizes, exponents, and relative positions of its parts).
-- Move close to the candidate assembly (within 2.5 units), pick it up, carry it to \
-the locked door, and place it there:
-  * If it is the correct key object: the door unlocks and opens! Fly through into \
-the next room.
-  * If it is the wrong object: the carried assembly is destroyed and your hands \
-become empty. Return into the room to find the real key.
-- You can pick up any furniture/prop assembly in the room. If you realize you \
-picked the wrong object before reaching the door, you can drop it on the floor \
-anywhere.
+- Each room on your path has a locked door requiring a specific shape name (e.g. GUITAR, CHAIR, LAMP, SWORD, TELESCOPE) shown above at 'THE DOOR LOCK REQUIRES'.
+- Explore the room and inspect the assemblies detected by your sensor. Each assembly (assembly-0, assembly-1, ...) is a compound object made of one or more superquadric primitives.
+- Determine which assembly matches the required shape name based on its geometric composition (the sizes, exponents, and relative positions of its parts).
+- Move close to the candidate assembly (within 2.5 units), pick it up, carry it to the locked door, and place it there:
+  * If it is the correct key object: the door unlocks and opens! Fly through into the next room.
+  * If it is the wrong object: the carried assembly is destroyed and your hands become empty. Return into the room to find the real key.
+- You can pick up any furniture/prop assembly in the room. If you realize you picked the wrong object before reaching the door, you can drop it on the floor anywhere.
 
-YOUR SENSOR {reach}, only within your field of view, and only to
-shapes nothing else is hiding in your current room. Once any part of an assembly \
-is detected
-you receive all its shapes and remember them while in this room.
+YOUR SENSOR {reach}, only within your field of view, and only to shapes nothing else is hiding in your current room. Once any part of an assembly is detected you receive all its shapes and remember them while in this room.
 
 VISIBLE NOW ({len(state.visible)} shapes):
 {memory.table(state.player_position, state.visible)}
@@ -123,19 +103,11 @@ REMEMBERED FROM EARLIER ({len(remembered)} shapes, not currently in view):
 
 You have observed from {len(memory.room_poses)} distinct vantage points in this room.
 
-READING A SHAPE: `assembly` groups primitives that belong together as parts of one \
-object (assembly-0, assembly-1, ...).
-Walls, floor, ceiling, and the door (assembly 'door') form the room structure. \
-`centre` is its middle in world coordinates,
-`dist` is Euclidean distance from you, `size` is its half-extent along its own \
-three axes before rotation, and `exps` set its form —
-(1, 1) is an ellipsoid, (0.1, 0.1) a box, (0.1, 1) a cylinder, above 2 a pinched, \
-concave shape.
+READING A SHAPE: `assembly` groups primitives that belong together as parts of one object (assembly-0, assembly-1, ...). Walls, floor, ceiling, and the door (assembly 'door') form the room structure. `centre` is its middle in world coordinates, `dist` is Euclidean distance from you, `size` is its half-extent along its own three axes before rotation, and `exps` set its form — (1, 1) is an ellipsoid, (0.1, 0.1) a box, (0.1, 1) a cylinder, above 2 a pinched, concave shape.
 
 ACTIONS YOU CAN RETURN (up to {max_waypoints} per batch):
 1. `{{"type": "move", "target": [x, y, z]}}`:
-   - Flies towards destination [x, y, z]. Each segment is capped to \
-{max_segment:.0f} units.
+   - Flies towards destination [x, y, z]. Each segment is capped to {max_segment:.0f} units.
    - Flying past an object will NEVER accidentally pick it up.
    - Hitting a solid wall halts the batch immediately.
 2. `{{"type": "pick", "target": [x, y, z]}}`:
@@ -146,6 +118,5 @@ ACTIONS YOU CAN RETURN (up to {max_waypoints} per batch):
    - If placed at the door, it attempts to unlock the door (consuming the object).
    - If placed away from the door, it drops the assembly on the floor at that spot.
 
-Plan a sequence of actions: move to position, pick the object, move to the door, \
-place at the door.
+Plan a sequence of actions: move to position, pick the object, move to the door, place at the door.
 """

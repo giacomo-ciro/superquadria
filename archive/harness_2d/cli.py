@@ -94,7 +94,7 @@ def _make_agent(cfg: DictConfig, role: str = "agent") -> TmuxAgent:
         # One session per role, not one session with a window per role: every client
         # attached to a session is forced to that session's single current window, so
         # two roles sharing one session cannot be watched side by side.
-        session_name=f"general-intuition-{role}",
+        session_name=f"superquadria-{role}",
         window_name=role,
         effort=cfg.effort,
     )

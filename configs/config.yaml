@@ -1,5 +1,5 @@
 defaults:
-  - agent: codex    # claude | codex
+  - agent: codex        # claude | codex
   - _self_
 
 agent:
@@ -8,7 +8,7 @@ agent:
 
 generation:
   brief: null           # optional text prompt directing layout and room style
-  rooms: 1              # number of rooms to design and solve
+  rooms: 3              # number of rooms to design and solve
   levels: 1             # storeys the layout agent may use
 
 episode:

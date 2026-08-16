@@ -56,8 +56,6 @@ SENSOR_RANGE = math.inf
 FLY_SPEED = 12.0
 MOUSE_SENSITIVITY = 40.0
 
-#: Task hues, per new_task.md. Structure grey is a knob, because it is one of
-#: the two things the gate is meant to settle.
 PEG_COLOR = (0.15, 0.90, 0.30)
 DECOY_COLOR = (0.95, 0.15, 0.15)
 LOCK_COLOR = (1.00, 0.85, 0.10)

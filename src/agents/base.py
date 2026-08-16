@@ -68,7 +68,7 @@ class Agent(ABC):
     and lives here.
     """
 
-    session_name: str = "general-intuition"
+    session_name: str = "superquadria"
     window_name: str = "agent"
     binary: str = ""
     model: str = ""
@@ -95,7 +95,7 @@ class Agent(ABC):
         """This agent's window, as an exact-match tmux target.
 
         Both halves are `=`-prefixed: for a bare name tmux falls back to prefix and
-        then fnmatch matching, so an unrelated `general-intuition-old` session or
+        then fnmatch matching, so an unrelated `superquadria-old` session or
         `player-old` window left over from something else answers to our target and
         gets driven — and killed — in place of ours.
         """
@@ -117,16 +117,20 @@ class Agent(ABC):
         for attempt in range(self.max_retries + 1):
             call_no = self.stats["calls"] + 1
             if attempt == 0:
-                self.log.log(
+                call_msg = (
                     f"call {call_no}: attempt 1/{self.max_retries + 1} "
                     f"({self.model or self.binary}, "
                     f"effort={self.effort or 'default'})"
                 )
             else:
-                self.log.log(
+                call_msg = (
                     f"call {call_no}: attempt {attempt + 1}/{self.max_retries + 1}"
                 )
             try:
+                if not self._is_initialized:
+                    self._ensure_session(attempt_log=call_msg)
+                else:
+                    self.log.log(call_msg)
                 result = self._invoke(prompt, schema, system=system)
                 self.log.log(f"call {call_no}: ok ({self.stats['duration_s']:.1f}s)")
                 return result
@@ -230,7 +234,7 @@ class Agent(ABC):
             == 0
         )
 
-    def _ensure_session(self) -> None:
+    def _ensure_session(self, *, attempt_log: str | None = None) -> None:
         """Spawn a brand-new CLI process in this agent's window.
 
         Any window a previous run left behind is torn down first: the CLI in it holds
@@ -344,13 +348,17 @@ class Agent(ABC):
                 check=True,
             )
 
-        # Printed now rather than after the boot wait, so it can be pasted while the CLI
-        # is still starting. `ignore-size` lets a watcher use copy mode without changing
-        # the pinned pane dimensions the response capture relies on.
-        self.log.log(
-            f"attach: tmux attach -f ignore-size -t "
-            f"{self.session_name}:{self.window_name}"
-        )
+            if attempt_log is not None:
+                self.log.log(attempt_log)
+
+            # Printed now rather than after the boot wait, so it can be pasted
+            # while the CLI is still starting. `ignore-size` lets a watcher use
+            # copy mode without changing the pinned pane dimensions the response
+            # capture relies on.
+            self.log.log(
+                f"attach: tmux attach -f ignore-size -t "
+                f"{self.session_name}:{self.window_name}"
+            )
 
         # Wait for the CLI to boot and settle its TUI, rather than guessing a fixed
         # delay.

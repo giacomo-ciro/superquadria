@@ -22,45 +22,21 @@ def layout_prompt(cfg: WorldConfig, brief: str | None) -> str:
             "a generic office grid."
         )
     cells = cfg.cells
-    return f"""You are designing the floor plan of a building made entirely of \
-superquadrics.
+    return f"""You are designing the floor plan of a building made entirely of superquadrics.
 
 {intent}
 
-The floor plate is a {cells}x{cells} integer grid, cell [0, 0] to [{cells}, {cells}]. \
-A room is a
-rectangle on that grid: `origin` is its low corner [x, z], `size` is its extent \
-[width, depth].
-Rooms may be stacked across up to {cfg.max_levels} level(s) (0-indexed).
+The floor plate is a {cells}x{cells} integer grid, cell [0, 0] to [{cells}, {cells}]. A room is a rectangle on that grid: `origin` is its low corner [x, z], `size` is its extent [width, depth]. Design exactly {cfg.max_rooms} room(s) stacked across up to {cfg.max_levels} level(s) (0-indexed).
 
 HARD CONSTRAINTS
+- Propose exactly {cfg.max_rooms} room(s) in total.
 - Every room's `size` must be at least {cfg.min_cells}x{cfg.min_cells} cells.
-- A room's footprint (`origin` to `origin + size`) must stay inside [0, {cells}] \
-on both axes.
+- A room's footprint (`origin` to `origin + size`) must stay inside [0, {cells}] on both axes.
 - Room footprints on the same level must not overlap.
-- Every `id` is a unique slug; every room needs a distinctive `name`, a `style` \
-(the whole
-  brief the room will be furnished from, describing its function and materials), \
-a `key_concept`
-  (a recognizable object archetype like that serves as the key to unlock this \
-room's door), and
-  a `palette` object with RGB floats in range 0.0-1.0 for `wall`, `floor`, and \
-`ceiling` colors.
-- List every doorway you want as a `connections` entry between two room ids. \
-Only rooms sharing
-  a long-enough wall (same level) or footprint (adjacent levels) can actually be \
-connected — the
-  harness drops anything that does not geometrically fit and repairs the rest \
-into one connected
-  building, so propose freely.
+- Every `id` is a unique slug; every room needs a distinctive `name`, a `style` (the whole brief the room will be furnished from, describing its function and materials), a `key_concept` (a recognizable object archetype that serves as the key to unlock this room's door), and a `palette` object with RGB floats in range 0.0-1.0 for `wall`, `floor`, and `ceiling` colors.
+- List every doorway you want as a `connections` entry between two room ids. Only rooms sharing a long-enough wall (same level) or footprint (adjacent levels) can actually be connected — the harness drops anything that does not geometrically fit and repairs the rest into one connected building, so propose freely.
 - The first room you list is where the player starts.
-- A single room is fine if the brief calls for one — the exit door opens onto \
-nothing and needs
-  no second room. If the brief implies more than one space, connect them with doorways.
+- A single room is fine if the brief calls for one or if only 1 room is requested — the exit door opens onto nothing and needs no second room. If designing multiple rooms, connect them with doorways along the path.
 
-Design a building with real spatial character: rooms of varied size and proportion, \
-corridors
-where they help, and a floor plan that reads as one coherent place rather than a \
-grid of equal
-boxes.
+Design a building with real spatial character: rooms of varied size and proportion, corridors where they help, and a floor plan that reads as one coherent place rather than a grid of equal boxes.
 """

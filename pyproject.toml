@@ -1,5 +1,5 @@
 [project]
-name = "general-intuition"
+name = "superquadria"
 version = "0.1.0"
 description = "Agent harness that generates game environments and then plays them"
 readme = "README.md"
@@ -22,3 +22,7 @@ where = ["src"]
 # imports `agents` back — a cycle). `packages.find` does not discover loose modules.
 [tool.setuptools]
 py-modules = ["logger"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/prompts/*" = ["E501"]
+

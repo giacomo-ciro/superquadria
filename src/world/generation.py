@@ -1,17 +1,16 @@
-"""Agent-driven building generation: a floor plan, then one furnished room.
+"""Agent-driven building generation: a floor plan, then furnished rooms.
 
 Two agent calls: one designs the whole building's floor plan (`LAYOUT_SCHEMA`),
-the harness turns that into walls and doors with no agent involved, then a
-second call furnishes the spawn room (`ROOM_SCHEMA`) in its own room-local
-coordinate frame.
+the harness turns that into walls and doors with no agent involved, then
+parallel agent calls furnish the rooms (`ROOM_SCHEMA`) in their own room-local
+coordinate frames.
 
 Nothing the model returns becomes runtime geometry directly. A layout is
 validated and *repaired* — `layout.validate_and_repair` drops what is broken
-and stitches the rest into one connected building — rather than thrown away
-wholesale, because it is abstract enough to make that safe. Room content is
-validated per primitive and, if the room's local flood cannot prove the door
-still reachable, discarded wholesale: a bare sealed shell is still a valid
-room, an unreachable door is not.
+and stitches the rest into one connected building. Room content is
+validated per primitive and checked for door reachability via a local flood.
+If room furnishing fails for some rooms, valid rooms are retained and the
+layout is rebuilt. If all rooms or layout fails, an error is raised.
 
 The harness creates and locks each door along the path with an embossed
 replica of that room's key assembly: a plausible-looking generation is
@@ -541,389 +540,6 @@ def _instantiate(
     return instantiated
 
 
-def _procedural_object(concept: str) -> dict:
-    """One offline object recipe, in the same local frame the agent models in."""
-    prims = []
-    c = concept.lower()
-    if "guitar" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.35, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.25, 0.35, 0.08],
-                "exponents": [0.3, 0.8],
-                "color": [0.72, 0.42, 0.18],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.9, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.04, 0.25, 0.04],
-                "exponents": [0.1, 0.1],
-                "color": [0.35, 0.22, 0.12],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 1.2, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.07, 0.07, 0.04],
-                "exponents": [0.2, 0.2],
-                "color": [0.25, 0.15, 0.08],
-            }
-        )
-    elif "tree" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.4, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.08, 0.08, 0.4],
-                "exponents": [0.1, 1.0],
-                "color": [0.45, 0.30, 0.18],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 1.0, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.4, 0.4, 0.4],
-                "exponents": [1.0, 1.0],
-                "color": [0.22, 0.55, 0.24],
-            }
-        )
-    elif "chair" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.45, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.25, 0.04, 0.25],
-                "exponents": [0.2, 0.2],
-                "color": [0.58, 0.38, 0.24],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.75, -0.2],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.25, 0.26, 0.04],
-                "exponents": [0.2, 0.2],
-                "color": [0.55, 0.35, 0.22],
-            }
-        )
-        for dx in (-0.18, 0.18):
-            for dz in (-0.18, 0.18):
-                prims.append(
-                    {
-                        "offset": [dx, 0.2, dz],
-                        "rotation": [90.0, 0.0, 0.0],
-                        "scale": [0.03, 0.03, 0.2],
-                        "exponents": [0.1, 1.0],
-                        "color": [0.30, 0.28, 0.26],
-                    }
-                )
-    elif "lamp" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.02, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.18, 0.18, 0.02],
-                "exponents": [0.1, 1.0],
-                "color": [0.30, 0.30, 0.32],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.6, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.03, 0.03, 0.55],
-                "exponents": [0.1, 1.0],
-                "color": [0.65, 0.60, 0.40],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 1.25, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.2, 0.2, 0.12],
-                "exponents": [0.4, 1.0],
-                "color": [0.92, 0.88, 0.70],
-            }
-        )
-    elif "sword" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.6, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.04, 0.45, 0.02],
-                "exponents": [0.1, 0.1],
-                "color": [0.78, 0.80, 0.84],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.2, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.16, 0.03, 0.04],
-                "exponents": [0.1, 0.1],
-                "color": [0.75, 0.60, 0.20],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.08, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.03, 0.03, 0.08],
-                "exponents": [0.1, 1.0],
-                "color": [0.30, 0.18, 0.12],
-            }
-        )
-    elif "telescope" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.95, 0.0],
-                "rotation": [30.0, 0.0, 0.0],
-                "scale": [0.08, 0.08, 0.45],
-                "exponents": [0.1, 1.0],
-                "color": [0.75, 0.62, 0.25],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.45, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.04, 0.04, 0.45],
-                "exponents": [0.1, 1.0],
-                "color": [0.25, 0.25, 0.28],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.02, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.2, 0.2, 0.02],
-                "exponents": [0.1, 1.0],
-                "color": [0.30, 0.30, 0.32],
-            }
-        )
-    elif "chalice" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.02, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.15, 0.15, 0.02],
-                "exponents": [0.1, 1.0],
-                "color": [0.85, 0.72, 0.25],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.2, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.03, 0.03, 0.15],
-                "exponents": [0.1, 1.0],
-                "color": [0.80, 0.68, 0.22],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.45, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.18, 0.18, 0.15],
-                "exponents": [0.5, 1.0],
-                "color": [0.90, 0.78, 0.30],
-            }
-        )
-    elif "clock" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.5, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.25, 0.35, 0.12],
-                "exponents": [0.1, 0.1],
-                "color": [0.50, 0.32, 0.18],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.55, 0.13],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.16, 0.16, 0.02],
-                "exponents": [0.1, 1.0],
-                "color": [0.92, 0.90, 0.85],
-            }
-        )
-    elif "anvil" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.15, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.22, 0.15, 0.18],
-                "exponents": [0.1, 0.1],
-                "color": [0.28, 0.28, 0.30],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.38, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.38, 0.08, 0.16],
-                "exponents": [0.2, 0.2],
-                "color": [0.38, 0.38, 0.42],
-            }
-        )
-    elif "pencil" in c:
-        prims.append(
-            {
-                "offset": [0.0, 0.45, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.04, 0.04, 0.38],
-                "exponents": [0.1, 1.0],
-                "color": [0.90, 0.75, 0.15],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.88, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.04, 0.08, 0.04],
-                "exponents": [0.8, 0.8],
-                "color": [0.25, 0.22, 0.20],
-            }
-        )
-    else:
-        prims.append(
-            {
-                "offset": [0.0, 0.04, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.18, 0.04, 0.18],
-                "exponents": [0.1, 0.1],
-                "color": [0.45, 0.45, 0.48],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.35, 0.0],
-                "rotation": [90.0, 0.0, 0.0],
-                "scale": [0.04, 0.04, 0.3],
-                "exponents": [0.1, 1.0],
-                "color": [0.60, 0.58, 0.52],
-            }
-        )
-        prims.append(
-            {
-                "offset": [0.0, 0.75, 0.0],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": [0.14, 0.14, 0.14],
-                "exponents": [1.0, 1.0],
-                "color": [0.75, 0.50, 0.30],
-            }
-        )
-    return {"id": concept, "primitives": prims}
-
-
-#: Offline stand-ins, in the same shape the agent returns.
-_PROCEDURAL_FURNITURE: dict[str, list[dict]] = {
-    "dining_table": [
-        {
-            "offset": [0.0, 0.73, 0.0],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": [0.6, 0.03, 0.4],
-            "exponents": [0.1, 0.1],
-            "color": [0.60, 0.42, 0.28],
-        },
-        {
-            "offset": [-0.5, 0.35, -0.3],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.03, 0.03, 0.35],
-            "exponents": [0.1, 1.0],
-            "color": [0.32, 0.25, 0.20],
-        },
-        {
-            "offset": [0.5, 0.35, -0.3],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.03, 0.03, 0.35],
-            "exponents": [0.1, 1.0],
-            "color": [0.32, 0.25, 0.20],
-        },
-        {
-            "offset": [-0.5, 0.35, 0.3],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.03, 0.03, 0.35],
-            "exponents": [0.1, 1.0],
-            "color": [0.32, 0.25, 0.20],
-        },
-        {
-            "offset": [0.5, 0.35, 0.3],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.03, 0.03, 0.35],
-            "exponents": [0.1, 1.0],
-            "color": [0.32, 0.25, 0.20],
-        },
-    ],
-    "floor_lamp": [
-        {
-            "offset": [0.0, 0.02, 0.0],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.18, 0.18, 0.02],
-            "exponents": [0.1, 1.0],
-            "color": [0.30, 0.30, 0.32],
-        },
-        {
-            "offset": [0.0, 0.6, 0.0],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.03, 0.03, 0.55],
-            "exponents": [0.1, 1.0],
-            "color": [0.65, 0.60, 0.40],
-        },
-        {
-            "offset": [0.0, 1.25, 0.0],
-            "rotation": [90.0, 0.0, 0.0],
-            "scale": [0.2, 0.2, 0.12],
-            "exponents": [0.4, 1.0],
-            "color": [0.92, 0.88, 0.70],
-        },
-    ],
-}
-
-
-def _procedural_room(rng: random.Random, interior, key_concept: str = "key") -> dict:
-    """An offline `objects` + `placements` payload, parsed by the same code path."""
-    (x0, y0, z0), (x1, y1, z1) = interior
-    half_x, half_z = (x1 - x0) / 2, (z1 - z0) / 2
-
-    kpx = rng.uniform(-half_x * 0.6, half_x * 0.6)
-    kpz = rng.uniform(-half_z * 0.6, half_z * 0.6)
-    objects = [_procedural_object(key_concept)]
-    placements = [
-        {
-            "object": key_concept,
-            "position": [kpx, 0.0, kpz],
-            "rotation": [0.0, 0.0, 0.0],
-            "scale": 1.0,
-        }
-    ]
-
-    for name, prims in _PROCEDURAL_FURNITURE.items():
-        if name.lower() in key_concept.lower() or key_concept.lower() in name.lower():
-            continue
-        fpx = rng.uniform(-half_x * 0.6, half_x * 0.6)
-        fpz = rng.uniform(-half_z * 0.6, half_z * 0.6)
-        if math.hypot(fpx - kpx, fpz - kpz) <= 1.5:
-            continue
-        objects.append({"id": name, "primitives": prims})
-        placements.append(
-            {
-                "object": name,
-                "position": [fpx, 0.0, fpz],
-                "rotation": [0.0, 0.0, 0.0],
-                "scale": 1.0,
-            }
-        )
-
-    return {"notes": [], "objects": objects, "placements": placements}
-
-
 def _room_reachable(
     furniture: list[Superquadric],
     room: Room,
@@ -995,11 +611,10 @@ def _room_reachable(
 
 
 def generate_room(
-    agent: Agent | None,
+    agent: Agent,
     room: Room,
     doors: list[Door],
     cfg: WorldConfig,
-    rng: random.Random,
     *,
     brief: str | None = None,
     collision_resolution: int = 8,
@@ -1008,38 +623,28 @@ def generate_room(
     room_idx: int = 1,
     total_rooms: int = 1,
 ) -> tuple[list[Superquadric], str]:
-    """Furnish one room. A pure function of its inputs: same room, doors and
-    agent response in, same validated primitives (or an empty list) out — which
-    is what lets calling it once now, N times in a pool later, or in the
-    background later still, be a driver change rather than a redesign.
-    """
+    """Furnish one room via the room agent."""
     interior = room.interior(cfg)
     (x0, y0, z0), (x1, y1, z1) = interior
     origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
 
     room_label = f"room {room_idx}/{total_rooms} '{room.name}'"
     dur = 0.0
-    if agent is not None:
-        log.log(f"{room_label}: prompting agent...", stage="generation:room")
-        t0 = time.monotonic()
-        try:
-            payload = agent.run(
-                room_prompt(room, doors, cfg, interior, origin, brief=brief),
-                ROOM_SCHEMA,
-            )
-            source = "agent"
-            dur = time.monotonic() - t0
-        except (AgentError, ValueError, KeyError, TypeError) as exc:
-            dur = time.monotonic() - t0
-            log.log(
-                f"{room_label}: fell back to procedural ({exc})",
-                stage="generation:room",
-            )
-            payload = _procedural_room(rng, interior, key_concept=room.key_concept)
-            source = f"fallback:{type(exc).__name__}"
-    else:
-        payload = _procedural_room(rng, interior, key_concept=room.key_concept)
-        source = "procedural"
+    log.log(f"{room_label}: prompting agent...", stage="generation:room")
+    t0 = time.monotonic()
+    try:
+        payload = agent.run(
+            room_prompt(room, doors, cfg, interior, origin, brief=brief),
+            ROOM_SCHEMA,
+        )
+        dur = time.monotonic() - t0
+    except (AgentError, ValueError, KeyError, TypeError) as exc:
+        dur = time.monotonic() - t0
+        log.log(
+            f"{room_label}: agent failed ({exc})",
+            stage="generation:room",
+        )
+        return [], f"failed:{type(exc).__name__}"
 
     clearances = [shell_module.door_clearance(door, cfg) for door in doors]
     validated: list[Superquadric] = []
@@ -1052,6 +657,13 @@ def generate_room(
             continue
         validated.append(prim)
 
+    if not validated:
+        log.log(
+            f"{room_label}: no valid primitives generated",
+            stage="generation:room",
+        )
+        return [], "failed:empty"
+
     if not _room_reachable(
         validated,
         room,
@@ -1062,23 +674,16 @@ def generate_room(
     ):
         log.log(
             f"{room_label}: local flood cannot reach every doorway with "
-            f"{len(validated)} primitives — shipped as a bare shell",
+            f"{len(validated)} primitives — room furnishing failed",
             stage="generation:room",
         )
-        return [], source
+        return [], "failed:unreachable"
 
-    if agent is not None and source == "agent":
-        log.log(
-            f"{room_label}: ok ({dur:.1f}s, {len(validated)} primitives)",
-            stage="generation:room",
-        )
-    elif agent is not None and source != "agent":
-        log.log(
-            f"{room_label}: procedural ({len(validated)} primitives)",
-            stage="generation:room",
-        )
-
-    return validated, source
+    log.log(
+        f"{room_label}: ok ({dur:.1f}s, {len(validated)} primitives)",
+        stage="generation:room",
+    )
+    return validated, "agent"
 
 
 # ============================================================== the pipeline
@@ -1088,7 +693,6 @@ def generate_room(
 class WorldGenerator:
     """Builds a validated `Scene`: a floor plan, its shell, and furnished rooms."""
 
-    #: Only `generate_offline` may be called with agent=None.
     agent: Agent | None = None
     room_agent_factory: (
         Callable[[Room, int], Agent] | Callable[[Room], Agent] | None
@@ -1104,8 +708,6 @@ class WorldGenerator:
     collision_resolution: int = 8
     max_levels: int = 1
     max_rooms: int = 1
-    tol_scale: float = 0.05
-    tol_exp: float = 0.05
     sensor: Sensor = field(default_factory=Sensor)
     log: Logger = field(default_factory=lambda: Logger("generation"))
     seed: int | None = None
@@ -1133,43 +735,31 @@ class WorldGenerator:
     # --------------------------------------------------------------- top level
 
     def generate(self, brief: str | None = None) -> Scene:
+        if self.agent is None and self.room_agent_factory is None:
+            raise RuntimeError(
+                "No agent configured for world generation. "
+                "Please configure an agent and try again."
+            )
         if isinstance(self.agent, Agent):
             self.agent.clean()
-        raw, source = self._request_layout(brief)
+        raw, _ = self._request_layout(brief)
         try:
             built = layout_module.validate_and_repair(raw, self.cfg)
-            scene = self._assemble(
-                built, source=source, use_agent=(source == "agent"), brief=brief
-            )
-            if scene is not None:
-                return scene
-        except ValueError as exc:
+        except Exception as exc:
             self.log.log(f"layout repair failed: {exc}", stage="generation")
-        self.log.log("falling back to the procedural layout", stage="generation")
-        return self.generate_offline()
-
-    def generate_offline(self) -> Scene:
-        """Procedural building, zero agent calls — for smoke tests and demos."""
-        for _ in range(8):
-            raw = layout_module.procedural_layout(self._rng, self.cfg)
-            try:
-                built = layout_module.validate_and_repair(raw, self.cfg)
-            except ValueError:
-                continue
-            scene = self._assemble(
-                built, source="procedural", use_agent=False, brief=None
-            )
-            if scene is not None:
-                return scene
-        raise RuntimeError(
-            "procedural generation produced no valid world in 8 attempts"
-        )
+            raise RuntimeError(
+                f"Layout validation and repair failed ({exc}). Please try again."
+            ) from exc
+        return self._assemble(built, raw=raw, brief=brief)
 
     # ------------------------------------------------------------------ agent
 
     def _request_layout(self, brief: str | None) -> tuple[dict, str]:
         if self.agent is None:
-            return layout_module.procedural_layout(self._rng, self.cfg), "procedural"
+            raise RuntimeError(
+                "Layout agent is not configured. "
+                "Please configure an agent and try again."
+            )
         self.log.log(
             f"requesting floor plan for a {self.bounds:.0f}-unit building",
             stage="generation:layout",
@@ -1182,16 +772,16 @@ class WorldGenerator:
                 stage="generation:layout",
             )
             return raw, "agent"
-        except (AgentError, ValueError, KeyError, TypeError) as exc:
+        except Exception as exc:
             self.log.log(
-                f"layout generation fell back to procedural: {exc}",
+                f"layout generation failed: {exc}",
                 stage="generation:layout",
             )
-            return layout_module.procedural_layout(
-                self._rng, self.cfg
-            ), f"fallback:{type(exc).__name__}"
+            raise RuntimeError(
+                f"Layout generation failed ({exc}). Please try again."
+            ) from exc
 
-    def _get_room_agent(self, room: Room, idx: int = 1) -> Agent | None:
+    def _get_room_agent(self, room: Room, idx: int = 1) -> Agent:
         if self.room_agent_factory is not None:
             try:
                 return self.room_agent_factory(room, idx)
@@ -1210,18 +800,11 @@ class WorldGenerator:
                 effort=self.agent.effort,
                 log=self.log.scoped("generation:agent"),
             )
-        return self.agent
+        raise RuntimeError("No agent available for room generation.")
 
     # ------------------------------------------------------------- assembly
 
-    def _assemble(
-        self, built: Layout, *, source: str, use_agent: bool, brief: str | None
-    ) -> Scene | None:
-        shell_prims, _ = shell_module.build_shell(built, self.cfg)
-        handler = SuperquadricHandler(
-            shell_prims, collision_resolution=self.collision_resolution
-        )
-
+    def _assemble(self, built: Layout, *, raw: dict, brief: str | None) -> Scene:
         # Every room on the path has 1 or 2 doors touching it: an entrance (all
         # but the first), an outgoing hop (all but the last) or, on the last
         # room, the exit — `d.b is None` there, so it is never anyone's entrance.
@@ -1231,25 +814,14 @@ class WorldGenerator:
             if d.b is not None:
                 doors_by_room[d.b].append(d)
 
-        room0 = built.spawn_room
-        exit_room = built.rooms[built.path[-1]]
-
-        spawn = room0.centre(self.cfg)
-        away = spawn - _door_world_centre(doors_by_room[room0.index][0], self.cfg)
-        spawn_forward = Vec3(away.x, 0.0, away.z).normalized()
-        if spawn_forward == ZERO:
-            spawn_forward = FORWARD
-
-        # Every room on the path is furnished — the player flies through each
-        # one on the way to the exit, so none of them can be left a bare shell.
+        # Every room on the path is furnished
         target_rooms = [(built.rooms[idx], doors_by_room[idx]) for idx in built.path]
         total_rooms = len(target_rooms)
 
         def _furnish_task(
-            room_agent: Agent | None,
+            room_agent: Agent,
             room: Room,
             doors: list[Door],
-            rng: random.Random,
             idx: int,
         ) -> tuple[Room, list[Superquadric], str]:
             prims, r_source = generate_room(
@@ -1257,7 +829,6 @@ class WorldGenerator:
                 room,
                 doors,
                 self.cfg,
-                rng,
                 brief=brief,
                 collision_resolution=self.collision_resolution,
                 move_increment=self.move_increment,
@@ -1268,8 +839,7 @@ class WorldGenerator:
             return room, prims, r_source
 
         room_agents = [
-            self._get_room_agent(r, i + 1) if use_agent else None
-            for i, (r, _) in enumerate(target_rooms)
+            self._get_room_agent(r, i + 1) for i, (r, _) in enumerate(target_rooms)
         ]
         room_results: list[tuple[Room, list[Superquadric], str]] = []
         try:
@@ -1280,7 +850,6 @@ class WorldGenerator:
                         r_agent,
                         r,
                         d,
-                        random.Random(self._rng.randint(0, 10**9)),
                         i + 1,
                     )
                     for i, (r_agent, (r, d)) in enumerate(
@@ -1295,10 +864,63 @@ class WorldGenerator:
                     r_agent.cancel()
             raise
 
-        furniture_by_room = {r.index: f for r, f, _ in room_results}
-        room0_source = next(
-            (s for r, _, s in room_results if r.index == room0.index), "procedural"
+        successful_rooms = [
+            (r, prims) for r, prims, src in room_results if prims and src == "agent"
+        ]
+        if not successful_rooms:
+            raise RuntimeError(
+                "Room furnishing failed for all rooms. Please try again."
+            )
+
+        failed_rooms = [
+            r for r, prims, src in room_results if not (prims and src == "agent")
+        ]
+        if failed_rooms:
+            failed_names = [f"'{r.name}' (id={r.id})" for r in failed_rooms]
+            self.log.log(
+                f"Room furnishing failed for {len(failed_rooms)} room(s): "
+                f"{', '.join(failed_names)}. "
+                f"Retaining {len(successful_rooms)} valid room(s).",
+                stage="generation:room",
+            )
+            successful_ids = {r.id for r, _ in successful_rooms}
+            filtered_raw = dict(raw)
+            filtered_raw["rooms"] = [
+                r
+                for r in raw.get("rooms", [])
+                if isinstance(r, dict) and r.get("id") in successful_ids
+            ]
+            try:
+                built = layout_module.validate_and_repair(filtered_raw, self.cfg)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to build layout from surviving rooms ({exc}). "
+                    "Please try again."
+                ) from exc
+
+        shell_prims, _ = shell_module.build_shell(built, self.cfg)
+        handler = SuperquadricHandler(
+            shell_prims, collision_resolution=self.collision_resolution
         )
+
+        furniture_by_room_id: dict[str, list[Superquadric]] = {
+            r.id: prims for r, prims in successful_rooms
+        }
+
+        doors_by_room = {r.index: [] for r in built.rooms}
+        for d in built.doors:
+            doors_by_room[d.a].append(d)
+            if d.b is not None:
+                doors_by_room[d.b].append(d)
+
+        room0 = built.spawn_room
+        exit_room = built.rooms[built.path[-1]]
+
+        spawn = room0.centre(self.cfg)
+        away = spawn - _door_world_centre(doors_by_room[room0.index][0], self.cfg)
+        spawn_forward = Vec3(away.x, 0.0, away.z).normalized()
+        if spawn_forward == ZERO:
+            spawn_forward = FORWARD
 
         # One task per room on the path: each room locks its own outgoing door
         # with an embossed replica of that room's key object assembly.
@@ -1306,34 +928,17 @@ class WorldGenerator:
         global_assembly_id = 0
         for room_index, door in zip(built.path, built.doors):
             room = built.rooms[room_index]
-            room_furniture = furniture_by_room.get(room_index, [])
+            room_furniture = furniture_by_room_id.get(room.id, [])
 
             # Group primitives by original assembly label
             assemblies: dict[str, list[Superquadric]] = {}
             for prim in room_furniture:
                 assemblies.setdefault(prim.assembly, []).append(prim)
 
-            # If no assemblies were generated at all, generate procedural key assembly
             if not assemblies:
-                interior = room.interior(self.cfg)
-                (x0, y0, z0), (x1, y1, z1) = interior
-                origin = Vec3((x0 + x1) / 2, y0, (z0 + z1) / 2)
-                key_payload = {
-                    "objects": [_procedural_object(room.key_concept)],
-                    "placements": [
-                        {
-                            "object": room.key_concept,
-                            "position": [0.0, 0.0, 0.0],
-                            "rotation": [0.0, 0.0, 0.0],
-                            "scale": 1.0,
-                        }
-                    ],
-                }
-                for p in _instantiate(
-                    key_payload, origin, interior, room.name, self.log
-                ):
-                    room_furniture.append(p)
-                    assemblies.setdefault(p.assembly, []).append(p)
+                raise RuntimeError(
+                    f"Room '{room.name}' has no valid assemblies. Please try again."
+                )
 
             # Identify the key assembly
             key_orig_name = None
@@ -1381,8 +986,11 @@ class WorldGenerator:
 
         # Add furniture for any rooms not on the path (if any)
         path_set = set(built.path)
-        for room, furniture, _ in room_results:
+        for room in built.rooms:
             if room.index not in path_set:
+                furniture = furniture_by_room_id.get(room.id, [])
+                if not furniture:
+                    continue
                 orig_names = list({p.assembly for p in furniture})
                 self._rng.shuffle(orig_names)
                 anon_map = {}
@@ -1399,9 +1007,8 @@ class WorldGenerator:
         meta = {
             "theme": built.theme,
             "description": built.description,
-            "source": source,
-            "room_source": room0_source,
-            "match_tolerance": {"scale": self.tol_scale, "exponents": self.tol_exp},
+            "source": "agent",
+            "room_source": "agent",
             "layout": self._layout_meta(built),
             "task": tasks,
         }

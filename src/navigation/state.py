@@ -1,6 +1,6 @@
 """The observation handed to the navigation agent.
 
-This is the harness's explicit departure from TASK.md's vision policy: the agent
+This is the harness's explicit departure from a vision policy: the agent
 never sees a screenshot. It sees the *parameters* of the superquadrics its sensor
 has detected — the same validated numbers the renderer draws from — plus its own
 pose, the shape-matching task state, and episode bookkeeping.

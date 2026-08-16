@@ -20,7 +20,6 @@ from typing import Any
 from geometry import Vec3, basis, look_angles, look_vector
 from geometry.superquadrics import (
     DOOR,
-    LOCK,
     OBSTACLE,
     PORTAL,
     Sensor,
@@ -29,7 +28,6 @@ from geometry.superquadrics import (
 )
 from navigation.state import State
 from world.scene import Scene
-from world.task import is_pickable
 
 BACKGROUND = (0.05, 0.06, 0.08)
 #: The agent's own body, drawn only in third person. Unlit, so it reads as a
@@ -286,8 +284,10 @@ class UrsinaRenderer:
         *,
         sensor: Sensor,
         mesh_resolution: int = 16,
-        size: tuple[int, int] = (1280, 720),
         mouse_look: bool = False,
+        third_person: bool = False,
+        agent_mind: bool = True,
+        fullscreen: bool = True,
     ):
         import io
         import sys
@@ -302,12 +302,11 @@ class UrsinaRenderer:
         try:
             #: `Ursina` is a singleton proxy, so a checker sees none of `ShowBase`.
             self.app: Any = Ursina(
-                title="superquadric harness",
-                size=size,
+                title="superquadria",
                 vsync=True,
                 development_mode=False,
                 editor_ui_enabled=False,
-                fullscreen=False,
+                fullscreen=fullscreen,
                 show_ursina_splash=False,
             )
         finally:
@@ -320,7 +319,14 @@ class UrsinaRenderer:
         # near plane well inside that can never clip a wall the player is
         # legally allowed to be next to.
         camera.clip_plane_near = 0.05
-        camera.clip_plane_far = scene.bounds * 4
+        camera.clip_plane_far = scene.bounds * 15
+
+        # Synchronize UI orthographic camera film size with aspect ratio immediately
+        # so all Text and UI elements span the window borders at their intended
+        # scale from frame 0.
+        camera.ui_lens.set_film_size(
+            window.aspect_ratio * camera.ui.scale_x, camera.ui.scale_y
+        )
 
         #: One cached entity per primitive, built once. Static geometry is never
         #: rebuilt, and sensor visibility never toggles any of it: every shape
@@ -331,23 +337,56 @@ class UrsinaRenderer:
         self._matte_shader: Any = _matte_shader()
         self._unlit_shader: Any = _unlit_shader()
 
-        # Display a loading message on screen while building primitive meshes
-        from ursina import destroy
-
-        loading_text = Text(
+        # Display the world name and loading message on screen while building
+        # primitive meshes.
+        # Kept alive past this point — `draw()` destroys it once the HUD has
+        # its first real frame ready, so the splash never drops off to reveal
+        # a world with a blank HUD.
+        world_name = str(
+            scene.meta.get("theme")
+            or scene.meta.get("layout", {}).get("theme")
+            or scene.meta.get("source", "World")
+        ).strip()
+        self._loading_bg: Any = Entity(
+            parent=camera.ui,
+            model="quad",
+            scale=(window.aspect_ratio * 2 + 2, 4),
+            color=color.rgb(*BACKGROUND),
+            z=-10,
+        )
+        self._loading_title: Any = Text(
+            parent=camera.ui,
+            text=world_name.upper(),
+            position=(0, 0.04),
+            origin=(0, 0),
+            scale=1.4,
+            color=color.rgba(0.95, 0.96, 1.0, 1.0),
+            font="VeraMono.ttf",
+            use_tags=False,
+            z=-20,
+        )
+        self._loading_text: Any = Text(
             parent=camera.ui,
             text=f"Loading world ({len(scene.primitives)} primitives)...",
-            position=(0, 0),
+            position=(0, -0.04),
             origin=(0, 0),
-            scale=1.1,
-            color=color.rgba(0.90, 0.92, 0.96, 1.0),
+            scale=0.9,
+            color=color.rgba(0.65, 0.70, 0.78, 1.0),
             font="VeraMono.ttf",
+            use_tags=False,
+            z=-20,
         )
-        self.app.step()
+        # Pump initial steps with a brief interval so the OS window manager
+        # creates, maps, and presents the window with the splash screen before
+        # the mesh-building loop starts.
+        for _ in range(5):
+            self.app.step()
+            time.sleep(0.01)
 
         self._entity_keys: dict[int, tuple] = {}
         self.entities = {}
-        for prim in scene.primitives:
+        total_prims = len(scene.primitives)
+        for i, prim in enumerate(scene.primitives):
             mesh = scene.primitives.mesh_data(prim.id, mesh_resolution)
             self.entities[prim.id] = Entity(
                 model=Mesh(
@@ -368,8 +407,8 @@ class UrsinaRenderer:
                 prim.exponents,
                 prim.color,
             )
-
-        destroy(loading_text)
+            if i % 8 == 0 or i == total_prims - 1:
+                self.app.step()
 
         #: The agent's body: the driving model's own brand mark, or a plain
         #: sphere when there is no LLM policy to mark (manual play, tests). It
@@ -391,14 +430,17 @@ class UrsinaRenderer:
             scale=0.65,
             color=color.rgba(0.90, 0.92, 0.96, 1.0),
             font="VeraMono.ttf",
+            use_tags=False,
         )
         self.footer = Text(
             parent=camera.ui,
             text="",
-            position=(left_x, -0.45),
+            position=(0, -0.45),
+            origin=(0, 0),
             scale=0.65,
             color=color.rgba(0.55, 0.60, 0.68, 1.0),
             font="VeraMono.ttf",
+            use_tags=False,
         )
         #: Move history, agent reasoning and actions in the right column.
         self.moves = Text(
@@ -408,6 +450,7 @@ class UrsinaRenderer:
             scale=0.65,
             color=color.rgba(0.90, 0.92, 0.96, 1.0),
             font="VeraMono.ttf",
+            use_tags=False,
         )
         #: Last text assigned to each panel — Ursina rebuilds glyph meshes on
         #: every `.text =`, so skipping the assignment when nothing changed
@@ -423,6 +466,8 @@ class UrsinaRenderer:
             origin=(0, 0),
             scale=1.2,
             color=color.rgba(0.9, 0.9, 0.9, 0.5),
+            enabled=not third_person,
+            use_tags=False,
         )
         #: Ursina drops wheel events before `held_keys`, so the only way to see a
         #: scroll is an entity input hook.
@@ -438,19 +483,20 @@ class UrsinaRenderer:
         #: for replay, where the cursor stays free to click.
         self.mouse_look = mouse_look
         self._mouse = mouse
-        mouse.locked = mouse_look
+        mouse.locked = mouse_look and not third_person
 
-        self.third_person = False
-        self.agent_mind = True
+        self.third_person = third_person
+        self.agent_mind = agent_mind
         self._last_player_position = scene.player.position
         #: Third person opens framed on the agent inside the room.
         _, yaw = look_angles(scene.player.forward)
         self.orbit = Orbit(
             pitch=15.0, yaw=yaw, distance=6.0, pivot=scene.player.position
         )
-        self._max_orbit_distance = scene.bounds * 1.5
+        self._max_orbit_distance = scene.bounds * 10
 
         self._walls_without_doors = _find_walls_without_doors(scene)
+        self.show_outer_walls: bool = False
 
         self.pending_keys: set[str] = set()
         self.mouse_delta = (0.0, 0.0)
@@ -560,9 +606,13 @@ class UrsinaRenderer:
                 prim = scene.primitives.get(prim_id)
                 if prim.kind == PORTAL:
                     entity.enabled = False
-                elif self.third_person and (
-                    prim_id in self._walls_without_doors
-                    or "outer wall" in prim.assembly
+                elif (
+                    self.third_person
+                    and not self.show_outer_walls
+                    and (
+                        prim_id in self._walls_without_doors
+                        or "outer wall" in prim.assembly
+                    )
                 ):
                     entity.enabled = False
                 else:
@@ -650,11 +700,13 @@ class UrsinaRenderer:
             self._camera.rotation = (pitch, yaw, 0)
         from ursina import window
 
+        self._camera.ui_lens.set_film_size(
+            window.aspect_ratio * self._camera.ui.scale_x, self._camera.ui.scale_y
+        )
         left_x = window.left.x + 0.03
         right_x = max(0.35, window.right.x - 0.46)
         if self.hud.x != left_x:
             self.hud.x = left_x
-            self.footer.x = left_x
             self.moves.x = right_x
 
         if self.show_hud:
@@ -670,6 +722,25 @@ class UrsinaRenderer:
         footer_text = self._footer_text(info)
         if footer_text != self._last_footer_text:
             self.footer.text = self._last_footer_text = footer_text
+
+        # The HUD now has its first real content and the agent body is built —
+        # only now is the splash safe to drop, so this frame's step() presents
+        # the finished view rather than a half-populated one.
+        if self._loading_title is not None:
+            from ursina import destroy
+
+            destroy(self._loading_title)
+            self._loading_title = None
+        if self._loading_text is not None:
+            from ursina import destroy
+
+            destroy(self._loading_text)
+            self._loading_text = None
+        if self._loading_bg is not None:
+            from ursina import destroy
+
+            destroy(self._loading_bg)
+            self._loading_bg = None
 
         try:
             self.app.step()
@@ -699,6 +770,8 @@ class UrsinaRenderer:
             self.toggle_view()
         if "m" in self.pending_keys:
             self.toggle_agent_mind()
+        if "o" in self.pending_keys and self.third_person and not self.agent_mind:
+            self.toggle_outer_walls()
         if "tab" in self.pending_keys or "h" in self.pending_keys:
             self.toggle_hud()
 
@@ -749,21 +822,30 @@ class UrsinaRenderer:
         self._camera.position = (orbit.pivot - forward * orbit.distance).as_tuple()
         self._camera.rotation = (orbit.pitch, orbit.yaw, 0)
 
+    def set_third_person(self, enabled: bool) -> None:
+        """Enable or disable orbiting third-person camera view."""
+        self.third_person = enabled
+        if self.agent is not None:
+            self.agent.enabled = self.third_person
+        if self.crosshair is not None:
+            self.crosshair.enabled = not self.third_person
+        self._mouse.locked = self.mouse_look and not self.third_person
+        self.mouse_delta = (0.0, 0.0)
+        if self.third_person:
+            self.orbit.pivot = self._last_player_position
+            self.orbit.distance = min(self.orbit.distance, 8.0)
+
+    def set_agent_mind(self, enabled: bool) -> None:
+        """Enable or disable Agent Mind mode (vs God Mode)."""
+        self.agent_mind = enabled
+
     def toggle_view(self) -> None:
         """Swap first person for the orbit camera and back.
 
         Third person hands the cursor back — it is the camera's now — which also
         parks manual flight, since the policy reads the same mouse and keys.
         """
-        self.third_person = not self.third_person
-        if self.agent is not None:
-            self.agent.enabled = self.third_person
-        self.crosshair.enabled = not self.third_person
-        self._mouse.locked = self.mouse_look and not self.third_person
-        self.mouse_delta = (0.0, 0.0)
-        if self.third_person:
-            self.orbit.pivot = self._last_player_position
-            self.orbit.distance = min(self.orbit.distance, 8.0)
+        self.set_third_person(not self.third_person)
 
     def toggle_hud(self) -> None:
         """Toggle left and right HUD dashboard on and off."""
@@ -775,87 +857,76 @@ class UrsinaRenderer:
         """Swap between Agent Mind (memory-only) and God Mode (full scene)."""
         self.agent_mind = not self.agent_mind
 
+    def toggle_outer_walls(self) -> None:
+        """Toggle visibility of solid and outer walls in 3rd-person / God Mode."""
+        self.show_outer_walls = not self.show_outer_walls
+
     # --------------------------------------------------------------------- hud
 
     def _hud_text(self, state: State, memory, info: dict) -> str:
         lines = [
-            f"THEME: {self.theme}",
+            f"WORLD    {self.theme}",
         ]
         if self.theme_description:
-            lines.extend(_wrap_text(self.theme_description, width=38, max_lines=4))
+            lines.append("")
+            lines.extend(_wrap_text(self.theme_description, width=38))
         lines.append("")
-        lines.append(f"ROOM:  {state.room or 'unknown'}")
-        if state.room_description:
-            lines.extend(_wrap_text(state.room_description, width=38, max_lines=4))
+        lines.append("")
 
-        lines.extend(
-            [
-                "",
-                "SPATIAL POSE",
-                f" pos:  [{state.player_position.x:+5.1f}, "
-                f"{state.player_position.y:+5.1f}, "
-                f"{state.player_position.z:+5.1f}]",
-                f" look: [{state.forward.x:+5.2f}, {state.forward.y:+5.2f}, "
-                f"{state.forward.z:+5.2f}]",
-                "",
-                "PUZZLE TARGET (LOCK)",
-            ]
-        )
+        room_name = state.room or "unknown"
+        rooms_total = info.get("rooms_total", 1)
+        rooms_cleared = info.get("rooms_cleared", 0)
+        if rooms_total > 1 and state.room:
+            cleared = min(rooms_cleared + 1, rooms_total)
+            room_title = f"{room_name} ({cleared} / {rooms_total})"
+        else:
+            room_title = room_name
+
+        lines.append(f"ROOM     {room_title}")
+        if state.room_description:
+            lines.append("")
+            lines.extend(_wrap_text(state.room_description, width=38))
+        lines.append("")
+        lines.append("")
+
+        target_name = "none"
         if state.lock and "concept" in state.lock:
-            lines.append(f" find:  {state.lock['concept']}")
+            target_name = state.lock["concept"]
         elif state.lock and "scale" in state.lock:
             sx, sy, sz = state.lock["scale"]
             e1, e2 = state.lock["exponents"]
-            lines.append(f" scale: ({sx:.2f}, {sy:.2f}, {sz:.2f})")
-            lines.append(f" exps:  ({e1:.2f}, {e2:.2f})")
-        else:
-            lines.append(" target: - (no active lock)")
+            target_name = (
+                f"scale ({sx:.2f}, {sy:.2f}, {sz:.2f}) exps ({e1:.2f}, {e2:.2f})"
+            )
+
+        lines.append(f"LOCK     {target_name}")
+        lines.append("")
+        lines.append("")
+
+        carried_name = "none (hands free)"
+        if state.carrying and state.carrying.get("assembly"):
+            carried_name = state.carrying["assembly"]
+        lines.append(f"CARRIED  {carried_name}")
 
         lines.append("")
-        lines.append("INVENTORY (CARRYING)")
-        if state.carrying:
-            item_name = state.carrying.get("assembly", "object")
-            parts = state.carrying.get("parts", 1)
-            lines.append(f" item:  {item_name[:24]}")
-            lines.append(f" parts: {parts} primitive(s)")
-        else:
-            lines.append(" item:  (none)")
-
         lines.append("")
-        lines.append("SENSOR & MEMORY")
-        n_vis = len(state.visible)
-        n_obj = sum(1 for p in state.visible if is_pickable(p))
-        n_lock = sum(1 for p in state.visible if p.kind in (LOCK, DOOR))
-        details = []
-        if n_obj:
-            details.append(f"{n_obj} obj")
-        if n_lock:
-            details.append(f"{n_lock} lock")
-        suffix = f" ({', '.join(details)})" if details else ""
-        lines.append(f" visible: {n_vis} shapes{suffix}")
-        mem_shapes = len(memory.primitives) if memory else 0
-        mem_poses = len(memory.poses) if memory else 0
-        lines.append(f" memory:  {mem_shapes} shapes ({mem_poses} poses)")
-        if self.third_person:
-            lines.append(" *(3rd person: outer walls hidden for interior visibility)")
-
+        lines.append("BUDGETS")
         lines.append("")
-        lines.append("BUDGETS & PROGRESS")
+        lines.append(
+            f"  Rooms           {info.get('rooms_cleared', 0)} / "
+            f"{info.get('rooms_total', 1)} cleared"
+        )
+        lines.append(f"  Failed unlocks  {info.get('failed_attempts', 0)}")
         max_dist = info.get("max_distance", 0)
-        max_dist_str = "inf" if max_dist == float("inf") else f"{max_dist:.0f}"
+        max_dist_str = "inf" if max_dist == float("inf") else f"{max_dist:.1f}"
         dist_str = f"{info.get('distance', 0):.1f} / {max_dist_str} m"
-        lines.append(f" distance:  {dist_str}")
+        lines.append(f"  Distance        {dist_str}")
         max_coll = info.get("max_collisions", 0)
         max_coll_str = "inf" if max_coll in (float("inf"), 0) else int(max_coll)
         coll_str = f"{info.get('collisions', 0)} / {max_coll_str}"
-        lines.append(f" collision: {coll_str}")
-        lines.append(
-            f" rooms:     {info.get('rooms_cleared', 0)} / "
-            f"{info.get('rooms_total', 1)} cleared "
-            f"({info.get('failed_attempts', 0)} failed)"
-        )
-        replay_str = f" replay:    {info['replay']}" if info.get("replay") else ""
-        lines.append(replay_str)
+        lines.append(f"  Collision       {coll_str}")
+        if info.get("replay"):
+            lines.append(f"  Replay          {info['replay']}")
 
         return "\n".join(lines)
 
@@ -865,7 +936,7 @@ class UrsinaRenderer:
         Each section has fixed vertical slot allocation taking full column height
         so paragraphs stay in place without shifting as actions/reasoning progress.
         """
-        elapsed = f"run {_clock(info.get('elapsed_s', 0.0))}"
+        elapsed = _clock(info.get("elapsed_s", 0.0))
         max_calls = info.get("max_calls", 0)
         max_calls_str = "inf" if max_calls == float("inf") else int(max_calls)
         call_str = f"{info.get('calls', 0)} / {max_calls_str}"
@@ -876,28 +947,44 @@ class UrsinaRenderer:
         if policy == "manual":
             mind_label = "god mode" if self.agent_mind else "agent mode"
             lines = [
-                f"MANUAL PILOT{elapsed:>24}",
-                f"policy  {policy}",
+                f"RUN     {elapsed}",
                 "",
-                "CONTROLS:",
-                "  WASD        move horizontally",
-                "  SPACE/SHIFT fly up / down",
-                "  E           interact (pick/place)",
-                "  MOUSE       look direction",
-                f"  M           {mind_label}",
-                "  TAB         toggle HUD",
+                "",
+                "POLICY  manual",
+                "",
+                "",
+                "CONTROLS",
+                "",
+                "  WASD         move horizontally",
+                "  SPACE/SHIFT  fly up / down",
+                "  E            interact (pick / place)",
+                "  MOUSE        look direction",
+                f"  M            {mind_label}",
             ]
+            if self.third_person and not self.agent_mind:
+                walls_label = (
+                    "hide outer walls" if self.show_outer_walls else "show outer walls"
+                )
+                lines.append(f"  O            {walls_label}")
+            lines.append("  TAB          toggle HUD")
             return "\n".join(_pad_lines(lines, 29))
 
         waiting = info.get("waiting_s") or 0.0
         phase = info.get("phase", "-")
         phase_str = f"{phase} ({waiting:.0f}s)" if waiting else phase
 
-        # 1. Header (fixed 3 lines)
+        # 1. Header (RUN, TURN, POLICY, PHASE with double newline between sections)
         header_lines = [
-            f"TURN {call_str}{elapsed:>23}",
-            f"policy  {pol_str}",
-            f"phase   {phase_str}",
+            f"RUN     {elapsed}",
+            "",
+            "",
+            f"TURN    {call_str}",
+            "",
+            "",
+            f"POLICY  {pol_str}",
+            "",
+            "",
+            f"PHASE   {phase_str}",
         ]
 
         # 2. Reasoning (fixed 5 content lines)
@@ -910,53 +997,31 @@ class UrsinaRenderer:
         actions = active_turn.get("actions", [])
         action_lines = []
         if actions:
+            display_actions = actions[:7] if len(actions) > 8 else actions
+            for act in display_actions:
+                status = act.get("status", "pending")
+                icon = (
+                    "[+]"
+                    if status == "done"
+                    else (
+                        "[>]"
+                        if status == "active"
+                        else ("[x]" if status == "failed" else "[ ]")
+                    )
+                )
+                atype = act.get("type", "MOVE")
+                target = act.get("target", [0, 0, 0])
+                t_str = f"[ {target[0]:+4.1f}, {target[1]:+4.1f}, {target[2]:+4.1f} ]"
+                tag = (
+                    f" {act['info']}"
+                    if act.get("info")
+                    else (f" {act['dist']:.1f}m" if act.get("dist") else "")
+                )
+                action_lines.append(
+                    f"  {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}"
+                )
             if len(actions) > 8:
-                for act in actions[:7]:
-                    status = act.get("status", "pending")
-                    icon = (
-                        "[+]"
-                        if status == "done"
-                        else (
-                            "[>]"
-                            if status == "active"
-                            else ("[x]" if status == "failed" else "[ ]")
-                        )
-                    )
-                    atype = act.get("type", "MOVE")
-                    target = act.get("target", [0, 0, 0])
-                    t_str = f"[{target[0]:+4.1f}, {target[1]:+4.1f}, {target[2]:+4.1f}]"
-                    tag = (
-                        f" {act['info']}"
-                        if act.get("info")
-                        else (f" {act['dist']:.1f}m" if act.get("dist") else "")
-                    )
-                    action_lines.append(
-                        f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}"
-                    )
-                action_lines.append(f"     ... {len(actions) - 7} more")
-            else:
-                for act in actions:
-                    status = act.get("status", "pending")
-                    icon = (
-                        "[+]"
-                        if status == "done"
-                        else (
-                            "[>]"
-                            if status == "active"
-                            else ("[x]" if status == "failed" else "[ ]")
-                        )
-                    )
-                    atype = act.get("type", "MOVE")
-                    target = act.get("target", [0, 0, 0])
-                    t_str = f"[{target[0]:+4.1f}, {target[1]:+4.1f}, {target[2]:+4.1f}]"
-                    tag = (
-                        f" {act['info']}"
-                        if act.get("info")
-                        else (f" {act['dist']:.1f}m" if act.get("dist") else "")
-                    )
-                    action_lines.append(
-                        f" {icon} {act.get('idx', 1)}. {atype:<5} {t_str}{tag[:10]}"
-                    )
+                action_lines.append(f"      ... {len(actions) - 7} more")
         else:
             action_lines.append("  (no actions planned)")
         action_slots = _pad_lines(action_lines, 8)
@@ -981,14 +1046,20 @@ class UrsinaRenderer:
         lines = [
             *header_lines,
             "",
-            "REASONING:",
+            "",
+            "REASONING",
+            "",
             *reasoning_slots,
             "",
-            f"ACTION BATCH ({len(actions)}):" if actions else "ACTIONS:",
+            "",
+            f"ACTION PLAN ({len(actions)})" if actions else "ACTION PLAN",
+            "",
             *action_slots,
             "",
-            "PAST TURNS:",
-            "  #    gen  flown  result",
+            "",
+            "PAST TURNS",
+            "",
+            f"  {'#':^4} {'GEN':^7} {'MOVES':^7}  RESULT",
             *history_slots,
         ]
 
@@ -998,35 +1069,42 @@ class UrsinaRenderer:
     def _move_row(
         call: int, gen_s: float, waypoints: str, result: str, *, pending: bool = False
     ) -> str:
-        marker = ">" if pending else " "
-        return f"{marker}{call:>2} {gen_s:>5.1f}s {waypoints:>5}  {result[:14]}"
+        c_str = f">{call}" if pending else str(call)
+        g_str = f"{gen_s:.1f}s"
+        return f"  {c_str:^4} {g_str:^7} {waypoints:^7}  {result[:14]}"
 
     def _footer_text(self, info: dict) -> str:
         view_toggle = f"M {'god mode' if self.agent_mind else 'agent mode'}   "
+        walls_label = (
+            "hide outer walls" if self.show_outer_walls else "show outer walls"
+        )
+        walls_toggle = (
+            f"O {walls_label}   " if self.third_person and not self.agent_mind else ""
+        )
         speed = info.get("speed", 1.0)
-        speed_hint = f"+/- speed ({speed:.2f}x)"
+        speed_hint = f"+/- speed ({speed:g}x)"
         if self.third_person:
             if info.get("phase") in ("idle", "replaying", "paused", "done"):
                 return (
-                    f"SPACE play/pause   {speed_hint}   R restart   "
-                    f"LEFT-drag rotate   SCROLL zoom   {view_toggle}"
-                    f"TAB toggle HUD   V first person   ESC quit"
+                    f"SPACE pause   {speed_hint}   R restart   "
+                    f"LEFT-drag rotate   SCROLL zoom   {view_toggle}{walls_toggle}"
+                    f"TAB toggle HUD   V first person"
                 )
             return (
                 "LEFT-drag rotate   RIGHT-drag pan   SCROLL zoom   "
-                f"{view_toggle}TAB toggle HUD   V first person   ESC quit"
+                f"{view_toggle}{walls_toggle}TAB toggle HUD   V first person"
             )
         if info.get("phase") in ("idle", "replaying", "paused", "done"):
             return (
-                f"SPACE play/pause   {speed_hint}   R restart   {view_toggle}"
-                f"TAB toggle HUD   V third person   ESC quit"
+                f"SPACE pause   {speed_hint}   R restart   {view_toggle}"
+                f"TAB toggle HUD   V third person"
             )
         if info.get("policy") == "manual":
             return (
                 "WASD move   E interact   SPACE up   SHIFT down   "
-                f"{view_toggle}TAB toggle HUD   V third person   ESC quit"
+                f"{view_toggle}TAB toggle HUD   V third person"
             )
-        return f"{view_toggle}TAB toggle HUD   V third person   ESC/close to quit"
+        return f"{view_toggle}TAB toggle HUD   V third person"
 
     def release_mouse(self) -> None:
         """Hand the cursor back — replay is watched, not flown."""
@@ -1039,6 +1117,30 @@ class UrsinaRenderer:
             return
         self._closed = True
         self._mouse.locked = False
+        if self._loading_title is not None:
+            try:
+                from ursina import destroy
+
+                destroy(self._loading_title)
+            except Exception:
+                pass
+            self._loading_title = None
+        if self._loading_text is not None:
+            try:
+                from ursina import destroy
+
+                destroy(self._loading_text)
+            except Exception:
+                pass
+            self._loading_text = None
+        if self._loading_bg is not None:
+            try:
+                from ursina import destroy
+
+                destroy(self._loading_bg)
+            except Exception:
+                pass
+            self._loading_bg = None
         try:
             self.app.destroy()
         except Exception:  # already torn down by the window closing

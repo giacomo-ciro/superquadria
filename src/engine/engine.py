@@ -41,13 +41,15 @@ def move_row(record: dict) -> dict:
     """One call record as the renderer's move-history row."""
     blocked_by = record.get("blocked_by")
     blocked = blocked_by is not None
+    result = record.get("result") or (_blocker_tag(blocked_by) if blocked else "acted")
+    if " +" in result:
+        result = result.split(" +")[0]
     return {
         "call": record["call"],
         "gen_s": record.get("gen_s", 0.0),
         "flown": len(record["accepted"]) - (1 if blocked else 0),
         "planned": len(record["requested"]),
-        "result": record.get("result")
-        or (_blocker_tag(blocked_by) if blocked else "acted"),
+        "result": result,
     }
 
 
@@ -485,13 +487,7 @@ class Episode:
 
             elif action.type == PLACE:
                 accepted.append(action.to_dict())
-                tol = self.scene.meta.get("match_tolerance", {})
-                success, desc, d_res = place_at(
-                    self.scene,
-                    action.target,
-                    tol_scale=tol.get("scale", 0.05),
-                    tol_exp=tol.get("exponents", 0.05),
-                )
+                success, desc, d_res = place_at(self.scene, action.target)
                 if success:
                     if d_res == "opened":
                         self.rooms_cleared += 1
@@ -581,21 +577,20 @@ class Episode:
 
     def _tag(self, record: dict) -> str:
         """The same call, in the few characters a history row has room for."""
-        gained = f" +{record['observed']}" if record["observed"] else ""
         if record.get("door_result") == "opened":
-            return f"door open!{gained}"
+            return "door open!"
         if record.get("door_result") == "locked":
-            return f"wrong obj{gained}"
+            return "wrong obj"
         if record.get("action_failed"):
-            return f"action fail{gained}"
+            return "action fail"
         if record.get("picked_up"):
-            return f"picked {record['picked_up'][0][:8]}{gained}"
+            return f"picked {record['picked_up'][0][:8]}"
         if record.get("placed"):
-            return f"placed obj{gained}"
+            return "placed obj"
         blocked_by = record.get("blocked_by")
         if blocked_by is not None:
-            return f"{_blocker_tag(blocked_by)}{gained}"
-        return f"acted{gained}"
+            return _blocker_tag(blocked_by)
+        return "acted"
 
     def _describe(self, record: dict, planned: int) -> str:
         done = len(record["accepted"])
@@ -673,7 +668,6 @@ class Episode:
                 "waiting_s": waiting_s,
                 "history": self.history,
                 "active_turn": self._active_turn,
-                "match_tolerance": self.scene.meta.get("match_tolerance", {}),
                 "elapsed_s": time.monotonic() - self.started,
             },
         )
@@ -758,9 +752,54 @@ def _extract_events(trajectory: list[dict]) -> list[tuple[int, dict]]:
     return all_events
 
 
+def _get_action_pose_ranges(call: dict) -> list[tuple[int, int]]:
+    """Determine the [start_pose, end_pose] interval within this call's poses
+    for each accepted action."""
+    actions = call.get("accepted", [])
+    poses = call.get("poses", [])
+    events = call.get("events", [])
+    action_ranges: list[tuple[int, int]] = []
+    moves_left = sum(1 for a in actions if a.get("type") == MOVE)
+    local_p = 0
+    for a in actions:
+        atype = a.get("type")
+        target = a.get("target")
+        if atype in (PICK, PLACE, "pick", "place"):
+            offset = local_p
+            if events:
+                for ev in events:
+                    if ev.get("type") == atype and ev.get("pose_offset", 0) >= local_p:
+                        offset = ev.get("pose_offset", 0)
+                        break
+            action_ranges.append((local_p, offset))
+            local_p = offset
+        elif atype in (MOVE, "move"):
+            moves_left -= 1
+            if moves_left == 0 or not poses:
+                end_p = len(poses)
+            else:
+                best_idx = local_p
+                best_d = float("inf")
+                for i in range(local_p, len(poses)):
+                    d = math.sqrt(
+                        sum((x - y) ** 2 for x, y in zip(poses[i][:3], target))
+                    )
+                    if d < best_d:
+                        best_d = d
+                        best_idx = i
+                    if d < 1e-2:
+                        break
+                end_p = max(local_p + 1, min(len(poses), best_idx + 1))
+            action_ranges.append((local_p, end_p))
+            local_p = end_p
+        else:
+            action_ranges.append((local_p, local_p))
+    return action_ranges
+
+
 class Replay:
     """Re-watch a recorded episode: SPACE plays/pauses (and restarts from the
-    beginning once playback has run to the end), +/- changes speed (0.25x to 4x),
+    beginning once playback has run to the end), +/- changes speed (1x to 16x),
     R restarts from the beginning, closing the window quits.
 
     Consumes only the saved world and episode JSON — it never calls an agent.
@@ -788,7 +827,7 @@ class Replay:
         self.sensor = sensor
         self.agent_model = agent_model
         self.agent_effort = agent_effort
-        self.step_delay = step_delay if step_delay > 0 else 0.02
+        self.step_delay = (step_delay if step_delay > 0 else 0.02) / 0.25
         self.speed = 1.0
         if max_collisions is None:
             self.max_collisions = (
@@ -805,6 +844,9 @@ class Replay:
         self.call_ends = list(
             accumulate(len(call["poses"]) for call in result.trajectory)
         )
+        self.call_action_ranges = [
+            _get_action_pose_ranges(call) for call in result.trajectory
+        ]
         self.call_collisions = [0]
         c_count = 0
         for call in result.trajectory:
@@ -815,12 +857,20 @@ class Replay:
         self.start = (Vec3(*result.start), Vec3(*result.start_forward))
         self.memory = SpatialMemory()
         self._current_index = 0
+        self._current_state: State | None = None
         self.rooms_cleared = 0
         self.rooms_total = (
             len(self._initial_scene_data.get("meta", {}).get("task", {})) or 1
         )
         self.failed_attempts = 0
         self._seek(0)
+        self.renderer.agent_mind = False
+        if hasattr(self.renderer, "set_third_person"):
+            self.renderer._last_player_position = self.scene.player.position
+            self.renderer.set_third_person(True)
+        else:
+            self.renderer.third_person = True
+        self._draw(0, "idle")
 
     def _reset_scene(self) -> None:
         fresh = Scene.from_dict(
@@ -830,6 +880,7 @@ class Replay:
         self.scene.player = fresh.player
         self.rooms_cleared = 0
         self.failed_attempts = 0
+        self._current_state = None
 
     def run(self) -> None:
         playing = False
@@ -863,12 +914,12 @@ class Replay:
                 k in self.renderer.pending_keys
                 for k in ("+", "=", "plus", "numpad_+", "numpad +", "add")
             ):
-                self.speed = min(4.0, round(self.speed + 0.25, 2))
+                self.speed = min(16.0, round(self.speed + 1.0, 2))
             elif any(
                 k in self.renderer.pending_keys
                 for k in ("-", "_", "minus", "numpad_-", "numpad -", "subtract")
             ):
-                self.speed = max(0.25, round(self.speed - 0.25, 2))
+                self.speed = max(1.0, round(self.speed - 1.0, 2))
 
             if playing and index < len(self.poses):
                 step_acc += dt * (self.speed / self.step_delay)
@@ -899,7 +950,8 @@ class Replay:
             self.memory = SpatialMemory()
             self.scene.player.position = self.start[0]
             self.scene.player.forward = self.start[1]
-            self.memory.integrate(self._state())
+            self._current_state = self._state()
+            self.memory.integrate(self._current_state)
             return
 
         self._current_index = min(target_index, len(self.poses))
@@ -911,7 +963,8 @@ class Replay:
             if g_pose <= self._current_index:
                 self._apply_event(ev)
 
-        self.memory.integrate(self._state())
+        self._current_state = self._state()
+        self.memory.integrate(self._current_state)
 
     def _step_forward(self, count: int = 1) -> None:
         """Advance recorded poses during playback.
@@ -935,7 +988,8 @@ class Replay:
                 if prev_index < g_pose <= self._current_index:
                     self._apply_event(ev)
 
-        self.memory.integrate(self._state())
+        self._current_state = self._state()
+        self.memory.integrate(self._current_state)
 
     def _apply_event(self, ev: dict) -> None:
         """Fold one recorded pick/place event into the scene."""
@@ -1012,22 +1066,56 @@ class Replay:
             requested = call.get("requested", [])
             accepted = call.get("accepted", [])
             blocked_by = call.get("blocked_by")
+            call_poses = call.get("poses", [])
+            call_start = (
+                0 if target_call_idx == 0 else self.call_ends[target_call_idx - 1]
+            )
+            call_end = self.call_ends[target_call_idx]
+            rel_pose = max(0, min(index - call_start, len(call_poses)))
+            call_is_past = index >= call_end
+            call_is_future = index < call_start
+            action_ranges = (
+                self.call_action_ranges[target_call_idx]
+                if target_call_idx < len(self.call_action_ranges)
+                else []
+            )
+
             actions = []
             for j, a in enumerate(requested, 1):
-                status = (
-                    "done"
-                    if j <= len(accepted)
-                    else (
-                        "failed"
-                        if j == len(accepted) + 1 and blocked_by is not None
-                        else "pending"
+                is_accepted = j <= len(accepted)
+                is_failed_attempt = j == len(accepted) + 1 and blocked_by is not None
+                info_str = _blocker_tag(blocked_by) if is_failed_attempt else ""
+
+                if call_is_past:
+                    status = (
+                        "done"
+                        if is_accepted
+                        else ("failed" if is_failed_attempt else "pending")
                     )
-                )
-                info_str = (
-                    _blocker_tag(blocked_by)
-                    if status == "failed" and blocked_by is not None
-                    else ""
-                )
+                elif call_is_future:
+                    status = "pending"
+                else:
+                    if is_accepted:
+                        start_p, end_p = (
+                            action_ranges[j - 1]
+                            if (j - 1) < len(action_ranges)
+                            else (0, len(call_poses))
+                        )
+                        if rel_pose < start_p:
+                            status = "pending"
+                        elif rel_pose < end_p:
+                            status = "active"
+                        else:
+                            status = "done"
+                    elif is_failed_attempt:
+                        if rel_pose >= len(call_poses):
+                            status = "failed"
+                        else:
+                            prev_end = action_ranges[-1][1] if action_ranges else 0
+                            status = "active" if rel_pose >= prev_end else "pending"
+                    else:
+                        status = "pending"
+
                 actions.append(
                     {
                         "idx": j,
@@ -1044,13 +1132,21 @@ class Replay:
                 "gen_s": call.get("gen_s", 0.0),
             }
 
+        state = (
+            self._current_state if self._current_state is not None else self._state()
+        )
+
         return self.renderer.draw(
             self.scene,
-            self._state(),
+            state,
             self.memory,
             {
                 "phase": phase,
-                "calls": self.result.calls,
+                "calls": (
+                    min(target_call_idx + 1, self.result.calls)
+                    if self.result.trajectory
+                    else 0
+                ),
                 "max_calls": self.result.calls,
                 "collisions": cur_collisions,
                 "max_collisions": self.max_collisions,
@@ -1064,11 +1160,14 @@ class Replay:
                 "agent_effort": self.agent_effort,
                 "replay": f"{index}/{len(self.poses)}",
                 "speed": self.speed,
-                "history": self.history[: bisect_right(self.call_ends, index)],
+                "history": self.history[
+                    : (
+                        len(self.history)
+                        if index >= len(self.poses)
+                        else target_call_idx
+                    )
+                ],
                 "active_turn": active_turn,
-                "match_tolerance": self.scene.meta.get("match_tolerance", {}),
-                # The original run's clock, not this playback's: how long the episode
-                # took is a property of the episode.
                 "elapsed_s": self.result.wall_time_s,
             },
         )
