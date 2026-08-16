@@ -10,6 +10,7 @@ import io
 import json
 import math
 import re
+import shutil
 import signal
 import sys
 import time
@@ -357,6 +358,30 @@ def _replay(config: DictConfig) -> int:
 # -------------------------------------------------------------------- commands
 
 
+def _check_agent_available(config: DictConfig, command: str) -> str | None:
+    """None if `command` doesn't need a live agent CLI, or if the configured one
+    is on PATH. Otherwise the error message to show.
+
+    Without this, a missing `tmux` or agent binary surfaces minutes later as a
+    string of retried tmux failures, ending in either a logged one-liner
+    (`generate`) or an uncaught traceback (`play`/`run`) — see `Agent.run`.
+    """
+    needs_agent = command in ("generate", "run") or (
+        command == "play" and config.episode.policy == "agent"
+    )
+    if not needs_agent:
+        return None
+    if shutil.which("tmux") is None:
+        return "tmux is required but was not found on PATH"
+    binary = config.agent.binary
+    if shutil.which(binary) is None:
+        return (
+            f"agent CLI '{binary}' (set via `agent` in {CONFIG_PATH}) was not "
+            "found on PATH — install it or switch to the other agent"
+        )
+    return None
+
+
 def _dispatch(argv: list[str] | None = None) -> int:
     if isinstance(sys.stdout, io.TextIOWrapper):
         sys.stdout.reconfigure(line_buffering=True)
@@ -366,6 +391,8 @@ def _dispatch(argv: list[str] | None = None) -> int:
         config = load_config(CONFIG_PATH)
     except Exception as exc:  # one clean line, not a traceback
         parser.error(f"{CONFIG_PATH}: {exc}")
+    if (err := _check_agent_available(config, args.command)) is not None:
+        parser.error(err)
     stamp = time.strftime("%Y%m%d-%H%M%S")
     episode_path = EPISODES_DIR / f"episode-{stamp}.json"
 
